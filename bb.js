@@ -12,6 +12,8 @@ var argv = require('optimist')
 .argv;
 
 var schema = YAML.load(argv.c);
+console.log(schema);
+
 var mapping = YAML.load(argv.m);
 
 var header = undefined;//the first line of data is expected to be a header 
@@ -44,7 +46,11 @@ function process(data)
 	//insert all found objects
 	for(var key in objects)
 	{
-		console.log("CREATE: " + YAML.stringify(objects[key], 4));
+		var object = objects[key];
+		if(object != undefined)
+		{
+			console.log("CREATE: " + YAML.stringify(object, 4));
+		}
 	}
 }
 
@@ -62,9 +68,41 @@ function transformEntity(entity_name, entity, params)
 	object["entity_name"] = entity_name;
 	object["fields"] = fields;
 	
-	//TODO: validate each entity object, to see if the required fields are not undefined..
+	if(isValid(object))
+	{
+		return object;
+	}
+	return undefined;
+}
 
-	return object;
+//returns true if valid, false if invalid
+//for now it just checks if all required fields are unequal to undefined, as specified in the schema file
+//works kind of clunky, rethink
+function isValid(object)
+{
+	var def = schema["entities"][object["entity_name"]];
+	var valid = true;
+		
+	for(var key in object["fields"])
+	{
+		var field = object["fields"][key];
+		var fqn = Object.keys(field)[0];
+		var nqfn = fqn.substring(object["entity_name"].length + 1); //back to canonical name
+		var fieldvalue = field[fqn];
+
+		for(var i = 0; i < def.length; i++)
+		{
+			if(def[i].field == nqfn && def[i].required)
+			{
+				if(fieldvalue == undefined)
+				{
+					valid = false;
+				}
+			}
+		}
+	}
+	
+	return valid;
 }
 
 //execute the given chain of transformers and input values

@@ -68,7 +68,7 @@
                 transformer: 
                         - copy
 
-        object_0:
+        object:
                 input:  
                         - partij
                 transformer:
