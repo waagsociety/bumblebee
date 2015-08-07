@@ -1,0 +1,4 @@
+1. create target specifications for transparantnl entities
+2. create mapping file for each entity / dataset combination
+3. create transformers (default)
+4. create command line app first. 

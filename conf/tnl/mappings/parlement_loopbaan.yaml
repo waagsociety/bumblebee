@@ -1,0 +1,45 @@
+#this file contains no person info, except for link
+#this file can also be used for parlement_nevenfuncties
+tnl.organisation:
+        id:
+                transformer:
+                        - generate_id
+        name: 
+                input:
+                        - functie
+                transformer:
+                        - parse_organisation
+                        - unique
+       type: 
+                transformer:
+                        - explicit_null
+
+tnl.relation:
+        id: 
+                transformer: 
+                        - generate_id
+
+        subject:
+                input:
+                        - link
+                transformer:
+                        - copy
+        
+        object:
+                input:
+                        - functie
+                transformer:
+                        - parse_organisation
+                        - match_organisation
+       type: 
+                input:
+                        - functie
+                transformer:
+                        - parse_functie
+       span:
+               input:
+                       -functie
+               transformer:
+                       - parse_date_span
+
+

@@ -1,0 +1,87 @@
+#transformations are executed in order
+
+tnl.organisation:
+        id:
+                transformer: 
+                        - generate_id
+
+        
+        name_0:
+                input: 
+                        - source
+                transformer:
+                        - unique
+                        - copy
+
+        name_1:
+                input: 
+                        - partij
+                transformer:
+                        - unique
+                        - split
+
+        type_0:
+                input: 
+                        - partij
+                transformer:
+                        - literal_political_party
+
+        type_1:
+                input: 
+                        - source
+                transformer:
+                        - literal_parlement
+
+tnl.person:
+        id:
+                input: 
+                        - link
+                transformer:
+                        - unique
+                        - copy
+
+        name: 
+                input:
+                        - voornamen
+                        - achternaam
+                transformer:
+                        - merge
+
+        birthdate:
+                input: 
+                        - geboortedatum
+                transformer:
+                        - parse_date
+                        - format_utc
+
+tnl.relation:
+        id:
+                transformer:
+                        - generate_id
+
+        subject:
+                input: 
+                        - link
+                transformer: 
+                        - copy
+
+        object_0:
+                input:  
+                        - partij
+                transformer:
+                        - split
+                        - match_organisation
+
+        object_1:
+                input:  
+                        - source
+                transformer:
+                        - match_organisation
+
+        type:
+                transformer:
+                        - literal_membership
+
+        span:
+                transformer:
+                        - explicit_null

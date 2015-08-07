@@ -1,0 +1,63 @@
+Problem
+
+Many open data applications import non-uniform sets of data from different sources.
+
+The current practice is to convert each raw dataset either by hand, or with a script to the specification provided by the API of the open data application.
+Especially for non-uniform datasources that lack metadata, human pattern recognition skills, and at the least some form of validation is required. 
+
+Another important part of this transformation is to include unique identifiers known by the application, 
+for example so that records may be updated or deleted in the future, or relations between entities may be created.
+To accomplish this, some form of a matching and caching of id's are necessary.
+
+Solution
+
+To streamline this transformation process we propose a generic application for importing data.
+Bumblebee provides an interface to transform any dataset to a given specification, and provides facilities for matching and validation in the process.
+Bumblebee is a generic application, and works with configuration files and plugins to tailor the transformation process.
+
+Configuration consists of:
+
+* Target specification
+
+This describes the columns of the desired output for one entity. Including the unique identifier.
+
+And for each input dataset a
+
+* Mapping specification
+
+is created. 
+The mapping specification consists of a list of mappings that show to bind columns of the input dataset to columns in the target specification. 
+Each mapping consists of the following elements:
+
+* [input_column] [transformer] [output_column] [auto_validate]
+
+Each transformer is a nodejs module that implements the transform(input)->[candidates] interface.
+The return value is a list of zero or more candidates ordered by confidence.
+Auto-validate indicates if human validation is required or not.
+
+The default transformer is the 'copy' script that simply returns the input as the output. 
+Other transformers could parse and reformat a field with regular expressions.
+More complex transformers could convert the input to a full text search query on a database and return the result.
+We even imagine transformers that use the watson cloud api for natural language processing.
+
+User scenario basic workflow:
+
+[0. write configuration + transformers]
+
+1. choose entity target specification
+2. open dataset (choose / infer mapping)
+3. run
+	When a dataset is processed, all transformers in the mapping specification are executed. 
+	Preferably in a parallel fashion.
+4. verify / correct candidates
+	for each candidate in the graphical user interface, click validate button..
+	highlight raw data
+5. export
+	the output is generated as a list of CRUD instructions of data that conforms to the target specification.
+
+Technical requirements:
+
+- Generate / Cache unique identifiers. (sqlite db for each dataset cache)
+- Nodejs / npm for modules
+- Web interface.
+

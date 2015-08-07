@@ -1,0 +1,26 @@
+# tables for uniqueness, caching and matching will be created from this specification
+# should this be plain sql (including composite keys etc?)
+#
+entities:
+
+        tnl.organisation:
+                - field: id
+                - field: name
+                  required: true
+                - field: address
+                - field: type
+        
+        tnl.person:
+                - field: id
+                - field: name
+                  required: true
+                - field: birthdate
+        
+        tnl.relation:
+                - field: id
+                - field: subject
+                  required: true
+                - field: object
+                  required: true
+                - field: type
+                - field: span
