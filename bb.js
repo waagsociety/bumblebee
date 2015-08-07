@@ -54,13 +54,15 @@ function transformEntity(entity_name, entity, params)
 		var fqn = entity_name + "." + f;
 		return transformField(fqn,entity[f],params)}
 	);
-	//TODO: If the entity file contains the same fieldname twice ,then return an array of two objects
+	//TODO: If the entity file contains the same fieldname more than once,
+	//in these cases fieldname ends with _0, _1 etc. I don't like it either.. to be fixed
+	//anyway this method should return two objects then..
 	
 	var object = {};
 	object["entity_name"] = entity_name;
 	object["fields"] = fields;
 	
-	//TODO: validate each entity object
+	//TODO: validate each entity object, to see if the required fields are not undefined..
 
 	return object;
 }
