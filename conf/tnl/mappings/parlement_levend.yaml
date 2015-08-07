@@ -1,38 +1,41 @@
 #transformations are executed in order
 
-tnl.organisation:
+- tnl.organisation:
         id:
                 transformer: 
                         - generate_id
 
-        
-        name_0:
+
+        name:
                 input: 
                         - source
                 transformer:
                         - unique
                         - copy
 
-        name_1:
-                input: 
-                        - partij
-                transformer:
-                        - unique
-                        - split
-
-        type_0:
+        type:
                 input: 
                         - partij
                 transformer:
                         - literal_political_party
 
-        type_1:
+- tnl.organisation:
+        id:
+                transformer: 
+                        - generate_id
+        name:
+                input: 
+                        - partij
+                transformer:
+                        - unique
+                        - split
+        type:
                 input: 
                         - source
                 transformer:
                         - literal_parlement
 
-tnl.person:
+- tnl.person:
         id:
                 input: 
                         - link
@@ -54,7 +57,7 @@ tnl.person:
                         - parse_date
                         - format_utc
 
-tnl.relation:
+- tnl.relation:
         id:
                 transformer:
                         - generate_id
@@ -71,8 +74,26 @@ tnl.relation:
                 transformer:
                         - split
                         - match_organisation
+        type:
+                transformer:
+                        - literal_membership
 
-        object_1:
+        span:
+                transformer:
+                        - explicit_null
+
+- tnl.relation:
+        id:
+                transformer:
+                        - generate_id
+
+        subject:
+                input: 
+                        - link
+                transformer: 
+                        - copy
+
+        object:
                 input:  
                         - source
                 transformer:

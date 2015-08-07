@@ -13,7 +13,6 @@ var argv = require('optimist')
 
 var schema = YAML.load(argv.c);
 var mapping = YAML.load(argv.m);
-var entities = Object.keys(mapping);
 
 var header = undefined;//the first line of data is expected to be a header 
 //TODO: configure this in mapping file
@@ -36,7 +35,11 @@ stream.on('data', function(line) {
 //process one line at a time
 function process(data)
 {
-	var objects = entities.map(function(e){ return transformEntity(e,mapping[e],data)});
+	var objects = mapping.map(function(e){ 
+		var entity_name = Object.keys(e)[0];
+		var entity = e[entity_name];
+		return transformEntity(entity_name,entity,data)
+	});
 
 	//insert all found objects
 	for(var key in objects)
@@ -54,9 +57,6 @@ function transformEntity(entity_name, entity, params)
 		var fqn = entity_name + "." + f;
 		return transformField(fqn,entity[f],params)}
 	);
-	//TODO: If the entity file contains the same fieldname more than once,
-	//in these cases fieldname ends with _0, _1 etc. I don't like it either.. to be fixed
-	//anyway this method should return two objects then..
 	
 	var object = {};
 	object["entity_name"] = entity_name;
