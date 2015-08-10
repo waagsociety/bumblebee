@@ -2,7 +2,8 @@
 
 var fs = require('fs'),
 byline = require('byline'),
-YAML = require('yamljs'),
+YAML = require('js-yaml'),
+validate = require('jsonschema').validate,
 csv = require('csv');
 
 var argv = require('optimist')
@@ -11,11 +12,10 @@ var argv = require('optimist')
 .alias('c', 'conf').alias('m', 'mapping').alias('d','data')
 .argv;
 
-var schema = YAML.load(argv.c);
-console.log(schema);
+console.log('parsing schema');
+var schema = YAML.safeLoad(fs.readFileSync(argv.c, 'utf8'));
 
-var mapping = YAML.load(argv.m);
-
+var mapping = YAML.safeLoad(fs.readFileSync(argv.m, 'utf8'));
 var header = undefined;//the first line of data is expected to be a header 
 //TODO: configure this in mapping file
 
@@ -49,7 +49,7 @@ function process(data)
 		var object = objects[key];
 		if(object != undefined)
 		{
-			console.log("CREATE: " + YAML.stringify(object, 4));
+			console.log("create: " + YAML.safeDump(object));
 		}
 	}
 }
@@ -59,50 +59,26 @@ function process(data)
 //or undefined if entity was not valid
 function transformEntity(entity_name, entity, params)
 {
+	//map the fields to their transformed counterparts
 	var fields = Object.keys(entity).map(function(f){
-		var fqn = entity_name + "." + f;
-		return transformField(fqn,entity[f],params)}
-	);
+		return transformField(f,entity[f],params);
+	});
+
+	//reduce the set of fields to an object
+	var object = fields.reduce(function(obj, k) {
+		var key = Object.keys(k)[0]; //first property
+		obj[key] = k[key];
+		return obj;
+	}, {});
 	
-	var object = {};
-	object["entity_name"] = entity_name;
-	object["fields"] = fields;
-	
-	if(isValid(object))
+	//validate the entity
+	if(isValid(entity_name, object))
 	{
+		object["class"] = entity_name;
 		return object;
 	}
-	return undefined;
-}
-
-//returns true if valid, false if invalid
-//for now it just checks if all required fields are unequal to undefined, as specified in the schema file
-//works kind of clunky, rethink
-function isValid(object)
-{
-	var def = schema["entities"][object["entity_name"]];
-	var valid = true;
 		
-	for(var key in object["fields"])
-	{
-		var field = object["fields"][key];
-		var fqn = Object.keys(field)[0];
-		var nqfn = fqn.substring(object["entity_name"].length + 1); //back to canonical name
-		var fieldvalue = field[fqn];
-
-		for(var i = 0; i < def.length; i++)
-		{
-			if(def[i].field == nqfn && def[i].required)
-			{
-				if(fieldvalue == undefined)
-				{
-					valid = false;
-				}
-			}
-		}
-	}
-	
-	return valid;
+	return undefined;
 }
 
 //execute the given chain of transformers and input values
@@ -142,9 +118,19 @@ function transformField(field_name,field,params)
 		}
 	}
 
-	//console.log("OUT: " + data);
-
 	var pair = {};
 	pair[field_name] = data;
 	return pair;
 } 
+
+//validates according to json-schema
+function isValid(entity_name, object)
+{
+	var def = schema[entity_name];
+	var result = validate(object,def);
+	if(result.valid == false)
+	{
+		console.log('x');
+	}
+	return result.valid;
+}

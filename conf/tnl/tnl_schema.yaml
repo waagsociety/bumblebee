@@ -1,0 +1,67 @@
+---
+  tnl.organisation: 
+    $schema: "http://json-schema.org/draft-04/schema#"
+    title: "tnl.organisation"
+    description: "An organisation in the TNL database"
+    type: "object"
+    properties: 
+      id: 
+        description: "The unique identifier for an organisation"
+        type: "integer"
+      name: 
+        description: "Name of the organisation"
+        type: "string"
+      address: 
+        description: "Address of the organisation"
+        type: "string"
+      type: 
+        description: "Type of the organisation."
+        type: "string"
+    required: 
+      - "id"
+      - "name"
+  tnl.person: 
+    $schema: "http://json-schema.org/draft-04/schema#"
+    title: "tnl.person"
+    description: "A person in the TNL database"
+    type: "object"
+    properties: 
+      id: 
+        description: "The unique identifier for a person"
+        type: "string"
+      name: 
+        description: "Name of the person"
+        type: "string"
+      birthdate: 
+        description: "Birthdate of the person"
+        type: "string"
+      type: 
+        description: "Type of the organisation."
+        type: "string"
+    required: 
+      - "id"
+      - "name"
+  tnl.relation: 
+    $schema: "http://json-schema.org/draft-04/schema#"
+    title: "tnl.relation"
+    description: "A relation in the TNL database"
+    type: "object"
+    properties: 
+      id: 
+        description: "The unique identifier for a relation"
+        type: "integer"
+      subject: 
+        description: "Subject id of the relation"
+        type: "string"
+      object: 
+        description: "Object id of the relation"
+        type: "string"
+      type: 
+        description: "Type of the relation."
+        type: "string"
+      span: 
+        description: "Span of the relation"
+    required: 
+      - "id"
+      - "subject"
+      - "object"

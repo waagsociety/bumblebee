@@ -1,9 +1,9 @@
-#transformations are executed in order
-
+# transformations are executed in order
+# compound key creation
 - tnl.organisation:
         id:
                 transformer: 
-                        - generate_id
+                        - generate_id #find_id, compound_id etc.
 
 
         name:
@@ -12,6 +12,7 @@
                 transformer:
                         - unique
                         - copy
+                        - join
 
         type:
                 input: 
@@ -29,6 +30,7 @@
                 transformer:
                         - unique
                         - split
+                        - join
         type:
                 input: 
                         - source
@@ -42,6 +44,7 @@
                 transformer:
                         - unique
                         - copy
+                        - join
 
         name: 
                 input:
