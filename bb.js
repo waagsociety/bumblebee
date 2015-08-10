@@ -17,7 +17,13 @@ var schema = YAML.safeLoad(fs.readFileSync(argv.c, 'utf8'));
 
 var mapping = YAML.safeLoad(fs.readFileSync(argv.m, 'utf8'));
 var header = undefined;//the first line of data is expected to be a header 
-//TODO: configure this in mapping file
+
+var sqlite3 = require('sqlite3').verbose();
+var db_name = argv.c + ".db";
+
+console.log(db_name);
+var db = new sqlite3.Database(argv.c + ".db");//create or open (R/W) the database for the provided schema file
+initTables();
 
 var stream = byline(fs.createReadStream(argv.d, { encoding: 'utf8' }));
 
@@ -33,6 +39,32 @@ stream.on('data', function(line) {
 		});
 	}
 });
+
+//create a table for each schema found in the definition
+//initializes the context variable
+function initTables()
+{
+	var entities = Object.keys(schema);
+	entities.forEach(function(e)
+	{
+		var def = schema[e];
+
+		//reduce the properties in each schema definition to a single create statement
+		var statement = Object.keys(def["properties"]).reduce(function(prev,cur){
+			var field_name = cur; 
+			var type = def["properties"][field_name]["type"];
+			return prev + field_name + " " + type + ", ";
+
+		},"CREATE TABLE IF NOT EXISTS " + e.replace('.','_') + "( ");
+		
+		statement = statement.slice(0, - 2);
+		statement += ");"
+	
+		console.log(statement);
+		db.run(statement);
+
+	});
+}
 
 //process one line at a time
 function process(data)

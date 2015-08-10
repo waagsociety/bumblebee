@@ -61,6 +61,7 @@
         type: "string"
       span: 
         description: "Span of the relation"
+        type: "string"
     required: 
       - "id"
       - "subject"
