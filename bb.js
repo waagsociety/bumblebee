@@ -39,10 +39,12 @@ function run()
 		db.run(statement);
 	});
 
+	//load mappings and data
 	var mapping = YAML.safeLoad(fs.readFileSync(argv.m, 'utf8'));
 	var header = undefined;//the first line of data is expected to be a header 
 	var stream = byline(fs.createReadStream(argv.d, { encoding: 'utf8' }));
 
+	//start data processing
 	stream.on('data', function(line) {
 		if(header == undefined)
 		{
@@ -50,30 +52,44 @@ function run()
 		}
 		else
 		{
-			csv.parse(line,function(err, output){
-				process(schema, mapping, header, output[0]);
+			csv.parse(line,function(err, output){ //async
+				var context = 
+				{
+					"db_connection" : db,
+					"schema" : schema,
+					"mapping" : mapping,
+					"header" : header,
+					"data" : output[0] 
+				};
+				process(context);
 			});
 		}
 	});
 }
 
-//process one line at a time, according to the specified mapping
-function process(schema, mapping, header, data)
+//process one row at a time, according to the specified mapping
+//for each entity in the mapping file, transform the data, 
+//validate the transformed data with the schema.
+function process(context)
 {
-	var objects = mapping.map(function(e){ 
-		var entity_name = Object.keys(e)[0];
-		var entity = e[entity_name];
-		var def = schema[entity_name];
+	var objects = context["mapping"].map(function(e){ 
 		
-		var transformed = transformEntity(entity_name, entity, header, data);
+		context["entity_name"] = Object.keys(e)[0];
+		context["entity"] = e[context["entity_name"]];
+		context["def"] = context["schema"][context["entity_name"]];
+		var transformed = transformEntity(context);
+		
 		//validate according to schema
-		if(isValid(def, transformed)){
-			transformed["class"] = entity_name; //inject this property for later use
+		if(isValid(context["def"], transformed)){
+			transformed["class"] = context["entity_name"]; //inject this property for later use
 			console.log("create: " + YAML.safeDump(transformed));
 			return transformed;
 		}
+		else
+		{
+			//console.log('x');
+		}
 	});
-
 	//todo: do something with these objects.. put them in the database or something
 }
 
@@ -97,11 +113,13 @@ function createTableStatement(entity_name, def)
 //transform the given entity and input values
 //return one (or more) object that consists of key value pairs for each field
 //or undefined if entity was not valid
-function transformEntity(entity_name, entity, header, data)
+function transformEntity(context)
 {
 	//map the fields to their transformed counterparts
-	var fields = Object.keys(entity).map(function(f){
-		return transformField(f,entity[f], header, data);
+	var fields = Object.keys(context["entity"]).map(function(f){
+		context["field_name"] = f;
+		context["field"] = context["entity"][f];
+		return transformField(context);
 	});
 
 	//reduce the set of fields to an object
@@ -114,24 +132,23 @@ function transformEntity(entity_name, entity, header, data)
 
 //execute the given chain of transformers and input values
 //return a key value pair: field_name -> transformed value
-function transformField(field_name, field, header, params)
+function transformField(context)
 {
-	//console.log("\nfield: " + field_name);
-
-	var columns = field["input"];
+	var columns = context["field"]["input"];
 	var data = undefined;
 
 	if(columns != undefined)
 	{
 		//collect the input value
 		data = columns.map(function(c){
-			var index = header.indexOf(c);
-			return params[index];
+			var index = context["header"].indexOf(c);
+			var value = context["data"][index];
+			return value;
 		});
 	}
 	
 	//get the transformer chain
-	var chain = field["transformer"];
+	var chain = context["field"]["transformer"];
 	
 	//execute the transformers chained together, input of the second is output of the first and so on.
 	for(var key in chain)
@@ -139,18 +156,19 @@ function transformField(field_name, field, header, params)
 		try
 		{
 			var mod = "./transformers/" + chain[key] + ".js";
-			data = require(mod).transform(field_name,data);
+			data = require(mod).transform(context,data);
 		}
 		catch(e)
 		{
-			console.log(e); //transformer not found..
+			console.log(e.stack); //probably transformer not found..
 		}
 	}
 
-	var pair = {};
-	pair[field_name] = data;
-	return pair;
-} 
+	var key = context["field_name"];
+	var result = {};
+	result[key] = data;
+	return result;
+}
 
 //validates according to json-schema
 function isValid(schema, object)
