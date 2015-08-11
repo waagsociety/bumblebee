@@ -51,10 +51,30 @@ function run()
 		else
 		{
 			csv.parse(line,function(err, output){
-				process(output[0]);
+				process(schema, mapping, header, output[0]);
 			});
 		}
 	});
+}
+
+//process one line at a time, according to the specified mapping
+function process(schema, mapping, header, data)
+{
+	var objects = mapping.map(function(e){ 
+		var entity_name = Object.keys(e)[0];
+		var entity = e[entity_name];
+		var def = schema[entity_name];
+		
+		var transformed = transformEntity(entity_name, entity, header, data);
+		//validate according to schema
+		if(isValid(def, transformed)){
+			transformed["class"] = entity_name; //inject this property for later use
+			console.log("create: " + YAML.safeDump(transformed));
+			return transformed;
+		}
+	});
+
+	//todo: do something with these objects.. put them in the database or something
 }
 
 //create a table for each schema found in the definition
@@ -74,56 +94,27 @@ function createTableStatement(entity_name, def)
 	return statement;
 }
 
-//process one line at a time
-function process(data)
-{
-	var objects = mapping.map(function(e){ 
-		var entity_name = Object.keys(e)[0];
-		var entity = e[entity_name];
-		return transformEntity(entity_name,entity,data)
-	});
-
-	//insert all found objects
-	for(var key in objects)
-	{
-		var object = objects[key];
-		if(object != undefined)
-		{
-			console.log("create: " + YAML.safeDump(object));
-		}
-	}
-}
-
 //transform the given entity and input values
 //return one (or more) object that consists of key value pairs for each field
 //or undefined if entity was not valid
-function transformEntity(entity_name, entity, params)
+function transformEntity(entity_name, entity, header, data)
 {
 	//map the fields to their transformed counterparts
 	var fields = Object.keys(entity).map(function(f){
-		return transformField(f,entity[f],params);
+		return transformField(f,entity[f], header, data);
 	});
 
 	//reduce the set of fields to an object
-	var object = fields.reduce(function(obj, k) {
+	return fields.reduce(function(obj, k) {
 		var key = Object.keys(k)[0]; //first property
 		obj[key] = k[key];
 		return obj;
 	}, {});
-	
-	//validate the entity
-	if(isValid(entity_name, object))
-	{
-		object["class"] = entity_name;
-		return object;
-	}
-		
-	return undefined;
 }
 
 //execute the given chain of transformers and input values
 //return a key value pair: field_name -> transformed value
-function transformField(field_name,field,params)
+function transformField(field_name, field, header, params)
 {
 	//console.log("\nfield: " + field_name);
 
@@ -143,8 +134,6 @@ function transformField(field_name,field,params)
 	var chain = field["transformer"];
 	
 	//execute the transformers chained together, input of the second is output of the first and so on.
-	//console.log("IN: " + data);
-	
 	for(var key in chain)
 	{
 		try
@@ -164,13 +153,12 @@ function transformField(field_name,field,params)
 } 
 
 //validates according to json-schema
-function isValid(entity_name, object)
+function isValid(schema, object)
 {
-	var def = schema[entity_name];
-	var result = validate(object,def);
+	var result = validate(object,schema);
 	if(result.valid == false)
 	{
-		console.log('x');
+		//console.log('x');
 	}
 	return result.valid;
 }

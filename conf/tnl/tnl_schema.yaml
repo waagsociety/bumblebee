@@ -18,7 +18,7 @@
         description: "Type of the organisation."
         type: "string"
     required: 
-   {}   - "id"
+      - "id"
       - "name"
   tnl.person: 
     $schema: "http://json-schema.org/draft-04/schema#"
