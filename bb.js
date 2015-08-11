@@ -4,66 +4,74 @@ var fs = require('fs'),
 byline = require('byline'),
 YAML = require('js-yaml'),
 validate = require('jsonschema').validate,
-csv = require('csv');
+csv = require('csv'),
+sqlite3 = require('sqlite3').verbose();
 
-var argv = require('optimist')
-.usage('Transform data according to a configuration and mapping file.\nUsage: $0')
-.demand(['c','m','d'])
-.alias('c', 'conf').alias('m', 'mapping').alias('d','data')
-.argv;
+//check if this file is being called as a script or as a module
+if(module.parent == null)
+{
+	run();
+}
+else
+{
+	//export the functions we want to unit test here
+	module.exports = {
+	  createTableStatement: createTableStatement,
+    	}
+}
 
-console.log('parsing schema');
-var schema = YAML.safeLoad(fs.readFileSync(argv.c, 'utf8'));
+//run the script from command line arguments
+function run()
+{
+	//read command line arguments
+	var argv = require('optimist')
+	.usage('Transform data according to a configuration and mapping file.\nUsage: $0')
+	.demand(['c','m','d'])
+	.alias('c', 'conf').alias('m', 'mapping').alias('d','data')
+	.argv;
 
-var mapping = YAML.safeLoad(fs.readFileSync(argv.m, 'utf8'));
-var header = undefined;//the first line of data is expected to be a header 
+	//process schema definitions, create tables if necessary	
+	var schema = YAML.safeLoad(fs.readFileSync(argv.c, 'utf8'));
+	var db_name = argv.c + ".db";
+	var db = new sqlite3.Database(argv.c + ".db");//create or open (R/W) the database for the provided schema file
+	Object.keys(schema).forEach(function(e){
+		var statement = createTableStatement(e, schema[e]);
+		db.run(statement);
+	});
 
-var sqlite3 = require('sqlite3').verbose();
-var db_name = argv.c + ".db";
+	var mapping = YAML.safeLoad(fs.readFileSync(argv.m, 'utf8'));
+	var header = undefined;//the first line of data is expected to be a header 
+	var stream = byline(fs.createReadStream(argv.d, { encoding: 'utf8' }));
 
-console.log(db_name);
-var db = new sqlite3.Database(argv.c + ".db");//create or open (R/W) the database for the provided schema file
-initTables();
-
-var stream = byline(fs.createReadStream(argv.d, { encoding: 'utf8' }));
-
-stream.on('data', function(line) {
-	if(header == undefined)
-	{
-		header = line.split(',');
-	}
-	else
-	{
-		csv.parse(line,function(err, output){
-			process(output[0]);
-		});
-	}
-});
+	stream.on('data', function(line) {
+		if(header == undefined)
+		{
+			header = line.split(',');
+		}
+		else
+		{
+			csv.parse(line,function(err, output){
+				process(output[0]);
+			});
+		}
+	});
+}
 
 //create a table for each schema found in the definition
 //initializes the context variable
-function initTables()
+function createTableStatement(entity_name, def)
 {
-	var entities = Object.keys(schema);
-	entities.forEach(function(e)
-	{
-		var def = schema[e];
+	//reduce the properties in each schema definition to a single create statement
+	var statement = Object.keys(def["properties"]).reduce(function(prev,cur){
+		var field_name = cur; 
+		var type = def["properties"][field_name]["type"];
+		return prev + field_name + " " + type + ", ";
 
-		//reduce the properties in each schema definition to a single create statement
-		var statement = Object.keys(def["properties"]).reduce(function(prev,cur){
-			var field_name = cur; 
-			var type = def["properties"][field_name]["type"];
-			return prev + field_name + " " + type + ", ";
+	},"CREATE TABLE IF NOT EXISTS " + entity_name.replace('.','_') + "( ");
 
-		},"CREATE TABLE IF NOT EXISTS " + e.replace('.','_') + "( ");
-		
-		statement = statement.slice(0, - 2);
-		statement += ");"
-	
-		console.log(statement);
-		db.run(statement);
-
-	});
+	statement = statement.slice(0, - 2);
+	statement += " );"
+	return statement;
 }
 
 //process one line at a time
