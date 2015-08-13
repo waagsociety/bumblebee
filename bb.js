@@ -17,6 +17,7 @@ else
 	//export the functions we want to unit test here
 	module.exports = {
 	  createTableStatement: createTableStatement,
+	  createInsertStatement: createInsertStatement
     	}
 }
 
@@ -84,6 +85,22 @@ function createTableStatement(entity_name, def)
 	return statement;
 }
 
+//insert an object into the cache database
+function createInsertStatement(object, def)
+{
+	var statement = Object.keys(def["properties"]).reduce(function(prev,cur){
+		var field_name = cur; 
+		var value = object[field_name];
+
+		return prev + "'" + value  + "', ";
+
+	},"INSERT INTO " + object.class.replace('.','_') + " VALUES ( ");
+
+	statement = statement.slice(0, - 2);
+	statement += " );"
+	return statement;
+}
+
 //process one row at a time, according to the specified mapping
 //for each entity in the mapping file, transform the data, 
 //validate the transformed data with the schema.
@@ -103,10 +120,10 @@ function process(context)
 		//validate according to schema
 		if(isValid(def, transformed)){
 			transformed.class = entity_name; //inject this property for later use
-			
-			console.log("create: " + YAML.safeDump(transformed));
-			//todo: do something with these objects.. at least cache them in the database or something
+			var insert = createInsertStatement(transformed, def);
+			context.db_cache.run(insert);
 
+			console.log("create: " + YAML.safeDump(transformed));
 			return transformed;
 		}
 		else
