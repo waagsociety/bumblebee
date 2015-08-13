@@ -67,32 +67,6 @@ function run()
 	});
 }
 
-//process one row at a time, according to the specified mapping
-//for each entity in the mapping file, transform the data, 
-//validate the transformed data with the schema.
-function process(context)
-{
-	var objects = context["mapping"].map(function(e){ 
-		
-		context["entity_name"] = Object.keys(e)[0];
-		context["entity"] = e[context["entity_name"]];
-		context["def"] = context["schema"][context["entity_name"]];
-		var transformed = transformEntity(context);
-		
-		//validate according to schema
-		if(isValid(context["def"], transformed)){
-			transformed["class"] = context["entity_name"]; //inject this property for later use
-			console.log("create: " + YAML.safeDump(transformed));
-			return transformed;
-		}
-		else
-		{
-			//console.log('x');
-		}
-	});
-	//todo: do something with these objects.. put them in the database or something
-}
-
 //create a table for each schema found in the definition
 //initializes the context variable
 function createTableStatement(entity_name, def)
@@ -110,16 +84,46 @@ function createTableStatement(entity_name, def)
 	return statement;
 }
 
+//process one row at a time, according to the specified mapping
+//for each entity in the mapping file, transform the data, 
+//validate the transformed data with the schema.
+function process(context)
+{
+	var objects = context.mapping.map(function(e){ 
+		
+		var entity_name = Object.keys(e)[0];
+		context.entity_name = entity_name;//save to context as well for use by transformer
+
+		var entity = e[entity_name];
+		var transformed = transformEntity(entity_name, entity, context);
+		
+		//schema for the given entity
+		var def = context.schema[entity_name];
+		
+		//validate according to schema
+		if(isValid(def, transformed)){
+			transformed.class = entity_name; //inject this property for later use
+			console.log("create: " + YAML.safeDump(transformed));
+			return transformed;
+		}
+		else
+		{
+			//console.log('x');
+		}
+	});
+	//todo: do something with these objects.. put them in the database or something
+}
+
 //transform the given entity and input values
 //return one (or more) object that consists of key value pairs for each field
 //or undefined if entity was not valid
-function transformEntity(context)
+function transformEntity(entity_name, entity, context)
 {
 	//map the fields to their transformed counterparts
-	var fields = Object.keys(context["entity"]).map(function(f){
-		context["field_name"] = f;
-		context["field"] = context["entity"][f];
-		return transformField(context);
+	var fields = Object.keys(entity).map(function(f){
+		var field_name  = f;
+		var field = entity[f];
+		return transformField(field_name, field, context);
 	});
 
 	//reduce the set of fields to an object
@@ -132,24 +136,25 @@ function transformEntity(context)
 
 //execute the given chain of transformers and input values
 //return a key value pair: field_name -> transformed value
-function transformField(context)
+function transformField(field_name, field, context)
 {
-	var columns = context["field"]["input"];
+	var columns = field.input;
 	var data = undefined;
 
 	if(columns != undefined)
 	{
 		//collect the input value
 		data = columns.map(function(c){
-			var index = context["header"].indexOf(c);
-			var value = context["data"][index];
+			var index = context.header.indexOf(c);
+			var value = context.data[index];
 			return value;
 		});
 	}
 	
 	//get the transformer chain
-	var chain = context["field"]["transformer"];
-	
+	var chain = field.transformer;
+	context.field_name = field_name;//save to context as well for use by transformer
+
 	//execute the transformers chained together, input of the second is output of the first and so on.
 	for(var key in chain)
 	{
@@ -164,7 +169,7 @@ function transformField(context)
 		}
 	}
 
-	var key = context["field_name"];
+	var key = field_name;
 	var result = {};
 	result[key] = data;
 	return result;
