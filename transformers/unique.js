@@ -3,7 +3,7 @@
 //returns data if count was 0, otherwise undefined
 exports.transform = function (context, data) {
 
-	var db = context["db_connection"];
+	var db = context["db_cache"];
 	var table_name = context["entity_name"].replace(".","_");
 	var column_name = context["field_name"];
 

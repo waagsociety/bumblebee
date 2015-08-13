@@ -33,10 +33,10 @@ function run()
 	//process schema definitions, create tables if necessary	
 	var schema = YAML.safeLoad(fs.readFileSync(argv.c, 'utf8'));
 	var db_name = argv.c + ".db";
-	var db = new sqlite3.Database(argv.c + ".db");//create or open (R/W) the database for the provided schema file
+	var db_cache = new sqlite3.Database(argv.c + ".db");//create or open (R/W) the cache database for the provided schema file
 	Object.keys(schema).forEach(function(e){
 		var statement = createTableStatement(e, schema[e]);
-		db.run(statement);
+		db_cache.run(statement);
 	});
 
 	//load mappings and data
@@ -55,7 +55,7 @@ function run()
 			csv.parse(line,function(err, output){ //async
 				var context = 
 				{
-					"db_connection" : db,
+					"db_cache" : db_cache,
 					"schema" : schema,
 					"mapping" : mapping,
 					"header" : header,
@@ -67,7 +67,7 @@ function run()
 	});
 }
 
-//create a table for each schema found in the definition
+//create a cache table for each schema found in the definition
 //initializes the context variable
 function createTableStatement(entity_name, def)
 {
@@ -103,15 +103,17 @@ function process(context)
 		//validate according to schema
 		if(isValid(def, transformed)){
 			transformed.class = entity_name; //inject this property for later use
+			
 			console.log("create: " + YAML.safeDump(transformed));
+			//todo: do something with these objects.. at least cache them in the database or something
+
 			return transformed;
 		}
 		else
 		{
-			//console.log('x');
+			//console.log('x');//not valid
 		}
 	});
-	//todo: do something with these objects.. put them in the database or something
 }
 
 //transform the given entity and input values
@@ -181,7 +183,9 @@ function isValid(schema, object)
 	var result = validate(object,schema);
 	if(result.valid == false)
 	{
-		//console.log('x');
+		console.log("INVALID: " + result.schema.title + ": " + result.errors[0].stack);
+		console.log(object);
+		console.log("\n");
 	}
 	return result.valid;
 }

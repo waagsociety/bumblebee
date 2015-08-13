@@ -7,7 +7,7 @@
     properties: 
       id: 
         description: "The unique identifier for an organisation"
-        type: "integer"
+        type: "string"
       name: 
         description: "Name of the organisation"
         type: "string"
@@ -49,7 +49,7 @@
     properties: 
       id: 
         description: "The unique identifier for a relation"
-        type: "integer"
+        type: "string"
       subject: 
         description: "Subject id of the relation"
         type: "string"
