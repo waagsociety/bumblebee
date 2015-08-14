@@ -16,6 +16,7 @@ else
 {
 	//export the functions we want to unit test here
 	module.exports = {
+	  transformField : transformField,
 	  createTableStatement: createTableStatement,
 	  createInsertStatement: createInsertStatement
     	}
