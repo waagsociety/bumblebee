@@ -19,7 +19,7 @@ else
 	  transformField : transformField,
 	  createTableStatement: createTableStatement,
 	  createInsertStatement: createInsertStatement
-    	}
+  }
 }
 
 //run the script from command line arguments

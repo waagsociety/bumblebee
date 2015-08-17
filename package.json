@@ -1,0 +1,27 @@
+{
+  "name": "bumblebee",
+  "version": "0.0.1",
+  "description": "Human-assisted ETL",
+  "main": "bb.js",
+  "dependencies": {
+    "byline": ">=4.2.1",
+    "csv": ">=0.4.5",
+    "deasync": ">=0.1.0",
+    "js-yaml": ">=3.3.1",
+    "jsonschema": ">=1.0.2",
+    "nodeunit": ">=0.9.1",
+    "optimist": ">=0.6.1",
+    "shortid": ">=2.2.2",
+    "sqlite3": ">=3.0.10"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Taco van Dijk",
+  "license": "MIT",
+  "bugs": {
+    "url": "http://waag.org"
+  },
+  "homepage": "http://waag.org"
+}
