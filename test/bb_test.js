@@ -75,7 +75,7 @@ exports.testUnique = function(test){
 		
 		var result = require('../transformers/unique.js').transform(context, 23);
 		test.ok(result.value == undefined);
-		test.ok(result.flag == Flag.DUPLICATE);
+		test.ok(result.resultcode == ResultCode.DUPLICATE);
 		
 		context.field_name = "name";
 		result = require('../transformers/unique.js').transform(context, "unique");
@@ -103,7 +103,7 @@ exports.testTransformField = function(test)
 			"transformer" : ["unique", "copy", "join"] //test the chaining of transformers
 		}
 
-		var expected = {"flag" : Flag.OK, "name" : "does_not_exist"};
+		var expected = {"resultcode" : ResultCode.OK, "name" : "does_not_exist"};
 		var result = bb.transformField(context.field_name, field, context);
 
 		test.ok(JSON.stringify(result) == JSON.stringify(expected), "should be equal"); 	

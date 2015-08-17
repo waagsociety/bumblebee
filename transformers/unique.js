@@ -18,7 +18,7 @@ exports.transform = function (context, data) {
 	var done = false;
 	
 	var result = {};
-	result.flag = Flag.FAIL;
+	result.resultcode = ResultCode.FAIL;
 
 	//sqlite3 is all asynchronous	
 	db.get(select,data,function(err, row) {
@@ -31,11 +31,11 @@ exports.transform = function (context, data) {
 			result.value = transformed;
 			if(transformed == undefined)
 			{
-				result.flag = Flag.DUPLICATE;
+				result.resultcode = ResultCode.DUPLICATE;
 			}
 			else
 			{
-				result.flag = Flag.OK;
+				result.resultcode = ResultCode.OK;
 			}
 		}
 		done = true;

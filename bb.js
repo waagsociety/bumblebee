@@ -7,8 +7,8 @@ validate = require('jsonschema').validate,
 csv = require('csv'),
 sqlite3 = require('sqlite3').verbose();
 
-//Result flags
-Flag = {
+//Result resultcodes
+ResultCode = {
 	OK : 0, //transformation went okay, no errors
 	FAIL : 1,//transformation failed
 	DUPLICATE : 2 //transformation indicates duplicate key
@@ -159,7 +159,7 @@ function transformEntity(entity_name, entity, context)
 
 	//reduce the set of fields to an object
 	return fields.reduce(function(obj, k) {
-		var key = Object.keys(k)[1]; //first property is flag, second is name of value 
+		var key = Object.keys(k)[1]; //first property is resultcode, second is name of value 
 		obj[key] = k[key];
 		return obj;
 	}, {});
@@ -202,7 +202,7 @@ function transformField(field_name, field, context)
 
 	var key = field_name;
 	var result = {};
-	result.flag = data.flag; 
+	result.resultcode = data.resultcode; 
 	result[key] = data.value;
 	return result;
 }

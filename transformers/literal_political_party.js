@@ -1,3 +1,3 @@
 exports.transform = function (context, data) {
-		return {"flag": Flag.OK, "value" : "POLITICAL PARTY"};
+		return {"resultcode": ResultCode.OK, "value" : "POLITICAL PARTY"};
 };

@@ -2,7 +2,7 @@
 exports.transform = function (context, data) {
 	var result = {};
 	result.value = data;
-	result.flag = Flag.OK;
+	result.resultcode = ResultCode.OK;
 
 	return result;
 };
