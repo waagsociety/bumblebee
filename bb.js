@@ -92,7 +92,11 @@ function createInsertStatement(object, def)
 	var statement = Object.keys(def["properties"]).reduce(function(prev,cur){
 		var field_name = cur; 
 		var value = object[field_name];
-
+		if(value != undefined)
+		{
+			value = value.replace(/'/g,"''");//replace all single quotes with double single quotes
+		}
+		
 		return prev + "'" + value  + "', ";
 
 	},"INSERT INTO " + object.class.replace('.','_') + " VALUES ( ");

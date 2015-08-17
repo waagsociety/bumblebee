@@ -6,18 +6,31 @@ exports.transform = function (context, data) {
 	var db = context["db_cache"];
 	var table_name = context["entity_name"].replace(".","_");
 	var column_name = context["field_name"];
+	
+	if(data != undefined && data.constructor === Array)
+	{
+		data = data[0];
+		data = data.replace("'", "''");
+		console.log(data);
+	}
 
-	var select = "SELECT count(*) as result FROM " + table_name + " WHERE " + column_name + " = '" + data + "';";	
+	var select = "SELECT count(*) as result FROM " + table_name + " WHERE " + column_name + " = ?;";	
 	var done = false;
+	
 	var result = undefined;
-
 	//sqlite3 is all asynchronous	
-	db.get(select, function(err, row) {
-		var count = row["result"];
-		var transformed = count > 0 ? undefined : data;
-		result = transformed;
+	db.get(select,data,function(err, row) {
+		if(err){
+			console.log("ERROR: ", err.stack)
+		}
+		else{
+			var count = row["result"];
+			var transformed = count > 0 ? undefined : data;
+			result = transformed;
+		}
 		done = true;
 	});
+
 	
 	//to make the transformer synchronous
 	require('deasync').loopWhile(function(){return !done;});

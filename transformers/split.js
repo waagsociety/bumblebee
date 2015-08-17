@@ -2,7 +2,9 @@
 //comma separated
 exports.transform = function (field_name, data) {
 	
-	if(data[0] != undefined)
+	if( data != undefined && 
+		data.constructor === Array 
+		&& data[0] != undefined)
 	{
 		values = data[0].split(',');
 		return values;
