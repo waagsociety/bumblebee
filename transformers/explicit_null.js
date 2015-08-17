@@ -1,3 +1,3 @@
 exports.transform = function (context, data) {
-		return "Null";
+		return {"flag": Flag.OK, "value" : "Null"};
 };

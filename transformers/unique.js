@@ -17,7 +17,9 @@ exports.transform = function (context, data) {
 	var select = "SELECT count(*) as result FROM " + table_name + " WHERE " + column_name + " = ?;";	
 	var done = false;
 	
-	var result = undefined;
+	var result = {};
+	result.flag = Flag.FAIL;
+
 	//sqlite3 is all asynchronous	
 	db.get(select,data,function(err, row) {
 		if(err){
@@ -26,7 +28,15 @@ exports.transform = function (context, data) {
 		else{
 			var count = row["result"];
 			var transformed = count > 0 ? undefined : data;
-			result = transformed;
+			result.value = transformed;
+			if(transformed == undefined)
+			{
+				result.flag = Flag.DUPLICATE;
+			}
+			else
+			{
+				result.flag = Flag.OK;
+			}
 		}
 		done = true;
 	});

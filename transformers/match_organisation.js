@@ -3,13 +3,13 @@
 exports.transform = function (context, data) {
 	if(data == 'PVDA')
 	{
-		return "/pvda.nl";
+		return {"flag": Flag.OK, "value" : "/pvda.nl"};
 	}
 
 	if(data == "CDA")
 	{
-		return "/cda.nl"
+		return {"flag": Flag.OK, "value" : "/cda.nl"};
 	}
 
-	return undefined;
+	return {"flag": Flag.Fail, "value" : undefined};
 };

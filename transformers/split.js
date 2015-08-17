@@ -7,7 +7,8 @@ exports.transform = function (context, data) {
 		&& data[0] != undefined)
 	{
 		values = data[0].split(',');
-		return values;
+	  	return {"flag": Flag.OK, "value" : values};
 	}
-	return data;
+
+	return {"flag": Flag.FAIL, "value" : data};
 };

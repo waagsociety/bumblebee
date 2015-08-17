@@ -1,8 +1,16 @@
-//simply copy the value
+//join the values if inside array, otherwise copy the value
 exports.transform = function (context, data) {
+	var result = {};
+	result.flag = Flag.OK;
+		
 	if(data != undefined && data.constructor === Array && data.length > 0)
 	{
-		return data.join(",");
+		result.value = data.join(",");
 	}
-	return data;
+	else
+	{
+		result.value = data;
+	}
+
+	return result;
 };

@@ -33,7 +33,7 @@ exports.testCreateTable = function(test){
 //test create insert statement
 exports.testCreateInsert = function(test){
 
-	var object = {"id" : 23, "name" : "exists", "class" : "tnl.organisation"};
+	var object = {"id" : "23", "name" : "exists", "class" : "tnl.organisation"};
 
 	var def = {
 		"$schema": "http://json-schema.org/draft-04/schema#",
@@ -64,6 +64,29 @@ exports.testCreateInsert = function(test){
 
 } 
 
+//test the 'unique' transformer
+//checks if the given value already exists in the cache for the specified field
+exports.testUnique = function(test){
+
+	//make sure we have some data to check
+	setupUnique(function(db){
+
+		var context = {"entity_name" : "tnl.organisation", "field_name" : "id", "db_cache" : this.db }
+		
+		var result = require('../transformers/unique.js').transform(context, 23);
+		test.ok(result.value == undefined);
+		test.ok(result.flag == Flag.DUPLICATE);
+		
+		context.field_name = "name";
+		result = require('../transformers/unique.js').transform(context, "unique");
+
+		test.ok(result.value == "unique");
+		
+		test.done();
+		db.close();//clean up the test database
+	});	
+}
+
 //test the transformation of one field
 exports.testTransformField = function(test)
 {
@@ -80,7 +103,7 @@ exports.testTransformField = function(test)
 			"transformer" : ["unique", "copy", "join"] //test the chaining of transformers
 		}
 
-		var expected = {"name" : "does_not_exist"};
+		var expected = {"flag" : Flag.OK, "name" : "does_not_exist"};
 		var result = bb.transformField(context.field_name, field, context);
 
 		test.ok(JSON.stringify(result) == JSON.stringify(expected), "should be equal"); 	
@@ -88,26 +111,7 @@ exports.testTransformField = function(test)
 	});
 }
 
-//test the 'unique' transformer
-//checks if the given value already exists in the cache for the specified field
-exports.testUnique = function(test){
 
-	//make sure we have some data to check
-	setupUnique(function(db){
-
-		var context = {"entity_name" : "tnl.organisation", "field_name" : "id", "db_cache" : this.db }
-		
-		var result = require('../transformers/unique.js').transform(context, 23);
-		test.ok(result == undefined);
-		
-		context.field_name = "name";
-		result = require('../transformers/unique.js').transform(context, "unique");
-		test.ok(result == "unique");
-		
-		test.done();
-		db.close();//clean up the test database
-	});	
-}
 
 //set up a database used for testing the unique transformer
 function setupUnique(callback){

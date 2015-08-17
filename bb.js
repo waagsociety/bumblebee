@@ -7,6 +7,13 @@ validate = require('jsonschema').validate,
 csv = require('csv'),
 sqlite3 = require('sqlite3').verbose();
 
+//Result flags
+Flag = {
+	OK : 0, //transformation went okay, no errors
+	FAIL : 1,//transformation failed
+	DUPLICATE : 2 //transformation indicates duplicate key
+}
+
 //check if this file is being called as a script or as a module
 if(module.parent == null)
 {
@@ -152,7 +159,7 @@ function transformEntity(entity_name, entity, context)
 
 	//reduce the set of fields to an object
 	return fields.reduce(function(obj, k) {
-		var key = Object.keys(k)[0]; //first property
+		var key = Object.keys(k)[1]; //first property is flag, second is name of value 
 		obj[key] = k[key];
 		return obj;
 	}, {});
@@ -163,12 +170,12 @@ function transformEntity(entity_name, entity, context)
 function transformField(field_name, field, context)
 {
 	var columns = field.input;
-	var data = undefined;
+	var data = {};
 
 	if(columns != undefined)
 	{
 		//collect the input value
-		data = columns.map(function(c){
+		data.value = columns.map(function(c){
 			var index = context.header.indexOf(c);
 			var value = context.data[index];
 			return value;
@@ -185,7 +192,7 @@ function transformField(field_name, field, context)
 		try
 		{
 			var mod = "./transformers/" + chain[key] + ".js";
-			data = require(mod).transform(context,data);
+			data = require(mod).transform(context,data.value);
 		}
 		catch(e)
 		{
@@ -195,7 +202,8 @@ function transformField(field_name, field, context)
 
 	var key = field_name;
 	var result = {};
-	result[key] = data;
+	result.flag = data.flag; 
+	result[key] = data.value;
 	return result;
 }
 

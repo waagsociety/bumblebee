@@ -1,4 +1,4 @@
 //format a date value as utc
 exports.transform = function (context, data) {
-	return data.toISOString()
+	return {"flag": Flag.OK, "value" : data.toISOString()};
 };
