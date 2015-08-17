@@ -1,5 +1,5 @@
 //parse a date value 
-exports.transform = function (field_name, data) {
+exports.transform = function (context, data) {
 	  var d = new Date(data); 
 	  return d;
 };

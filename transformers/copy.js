@@ -1,4 +1,4 @@
 //simply copy the value
-exports.transform = function (field_name, data) {
+exports.transform = function (context, data) {
 	  return data;
 };

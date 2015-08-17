@@ -1,6 +1,6 @@
 //split the value to a list
 //comma separated
-exports.transform = function (field_name, data) {
+exports.transform = function (context, data) {
 	
 	if( data != undefined && 
 		data.constructor === Array 
