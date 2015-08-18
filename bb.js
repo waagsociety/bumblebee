@@ -21,11 +21,12 @@ if(module.parent == null)
 }
 else
 {
-	//export the functions we want to unit test here
+	//export the functions we want to expose here
 	module.exports = {
 	  transformField : transformField,
 	  createTableStatement: createTableStatement,
-	  createInsertStatement: createInsertStatement
+	  createInsertStatement: createInsertStatement,
+	  transformFile: transformFile
   }
 }
 
@@ -38,20 +39,30 @@ function run()
 	.demand(['c','m','d'])
 	.alias('c', 'conf').alias('m', 'mapping').alias('d','data')
 	.argv;
+		transformFile(argv.c, argv.m, argv.d, function(result){
+			console.log(".");//one extra row was processed we can use this to update the server state for example 
+		});
+	}
 
+//start the streaming transformation process 
+//provide paths to the configuration files and input
+//callback is called at every transformed row
+//this function may be called from web application for example
+function transformFile(path_schema, path_mapping, path_data, callback)
+{
 	//process schema definitions, create tables if necessary	
-	var schema = YAML.safeLoad(fs.readFileSync(argv.c, 'utf8'));
-	var db_name = argv.c + ".db";
-	var db_cache = new sqlite3.Database(argv.c + ".db");//create or open (R/W) the cache database for the provided schema file
+	var schema = YAML.safeLoad(fs.readFileSync(path_schema, 'utf8'));
+	var db_name = path_schema + ".db";
+	var db_cache = new sqlite3.Database(path_schema + ".db");//create or open (R/W) the cache database for the provided schema file
 	Object.keys(schema).forEach(function(e){
 		var statement = createTableStatement(e, schema[e]);
 		db_cache.run(statement);
 	});
 
 	//load mappings and data
-	var mapping = YAML.safeLoad(fs.readFileSync(argv.m, 'utf8'));
+	var mapping = YAML.safeLoad(fs.readFileSync(path_mapping, 'utf8'));
 	var header = undefined;//the first line of data is expected to be a header 
-	var stream = byline(fs.createReadStream(argv.d, { encoding: 'utf8' }));
+	var stream = byline(fs.createReadStream(path_data, { encoding: 'utf8' }));
 
 	//start data processing
 	stream.on('data', function(line) {
@@ -70,7 +81,7 @@ function run()
 					"header" : header,
 					"data" : output[0] 
 				};
-				process(context);
+				processRow(context,callback);
 			});
 		}
 	});
@@ -116,7 +127,7 @@ function createInsertStatement(object, def)
 //process one row at a time, according to the specified mapping
 //for each entity in the mapping file, transform the data, 
 //validate the transformed data with the schema.
-function process(context)
+function processRow(context, callback)
 {
 	var objects = context.mapping.map(function(e){ 
 		
@@ -134,7 +145,6 @@ function process(context)
 			transformed.class = entity_name; //inject this property for later use
 			var insert = createInsertStatement(transformed, def);
 			context.db_cache.run(insert);
-
 			console.log("create: " + YAML.safeDump(transformed));
 			return transformed;
 		}
@@ -143,6 +153,7 @@ function process(context)
 			//console.log('x');//not valid
 		}
 	});
+	callback(objects);
 }
 
 //transform the given entity and input values
