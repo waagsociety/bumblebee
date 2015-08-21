@@ -7,6 +7,8 @@ validate = require('jsonschema').validate,
 csv = require('csv'),
 sqlite3 = require('sqlite3').verbose();
 
+var log = false;
+
 //Result resultcodes
 ResultCode = {
 	OK : 0, //transformation went okay, no errors
@@ -18,6 +20,7 @@ ResultCode = {
 if(module.parent == null)
 {
 	run();
+	log = true;
 }
 else
 {
@@ -69,6 +72,7 @@ function transformFile(path_schema, path_mapping, path_data, callback)
 		if(header == undefined)
 		{
 			header = line.split(',');
+			callback({"header" : header});
 		}
 		else
 		{
@@ -85,6 +89,13 @@ function transformFile(path_schema, path_mapping, path_data, callback)
 			});
 		}
 	});
+
+	return {
+		"db_cache" : db_cache,
+		"schema" : schema,
+		"mapping" : mapping,
+		"header" : header,
+	};
 }
 
 //create a cache table for each schema found in the definition
@@ -135,30 +146,42 @@ function processRow(context, callback)
 		context.entity_name = entity_name;//save to context as well for use by transformer
 
 		var entity = e[entity_name];
+		
 		var transformed = transformEntity(entity_name, entity, context);
 		
 		//schema for the given entity
 		var def = context.schema[entity_name];
 		
 		//validate according to schema
-		if(isValid(def, transformed)){
-			transformed.class = entity_name; //inject this property for later use
-			var insert = createInsertStatement(transformed, def);
+		if(isValid(def, transformed[0])){
+			transformed[0].class = entity_name; //inject this property for later use
+			transformed[1].class = entity_name; //inject this property for later use
+			var insert = createInsertStatement(transformed[0], def);
 			context.db_cache.run(insert);
-			console.log("create: " + YAML.safeDump(transformed));
-			return transformed;
+			if(log){console.log("create: " + YAML.safeDump(transformed));}
+			return transformed[1];
 		}
 		else
 		{
 			//console.log('x');//not valid
 		}
 	});
-	callback(objects);
+	
+	objects = objects.filter(function(n){ return n != undefined });
+	
+	//only callback if we have something to pass back	
+	if(objects.length > 0)
+	{
+		callback(objects);
+	}
 }
 
 //transform the given entity and input values
 //return one (or more) object that consists of key value pairs for each field
 //or undefined if entity was not valid
+//returns two copies of the object:
+//the first is used for validation
+//the second contains resultcodes for each field
 function transformEntity(entity_name, entity, context)
 {
 	//map the fields to their transformed counterparts
@@ -169,11 +192,19 @@ function transformEntity(entity_name, entity, context)
 	});
 
 	//reduce the set of fields to an object
-	return fields.reduce(function(obj, k) {
+	var object_to_validate =  fields.reduce(function(obj, k) {
 		var key = Object.keys(k)[1]; //first property is resultcode, second is name of value 
 		obj[key] = k[key];
 		return obj;
 	}, {});
+
+	var object_annotated = fields.reduce(function(obj, k) {
+		var key = Object.keys(k)[1]; //first property is resultcode, second is name of value 
+		obj[key] = k;
+		return obj;
+	}, {});
+
+	return [object_to_validate, object_annotated];
 }
 
 //execute the given chain of transformers and input values
@@ -222,7 +253,7 @@ function transformField(field_name, field, context)
 function isValid(schema, object)
 {
 	var result = validate(object,schema);
-	if(result.valid == false)
+	if(result.valid == false && log)
 	{
 		console.log("INVALID: " + result.schema.title + ": " + result.errors[0].stack);
 		console.log(object);

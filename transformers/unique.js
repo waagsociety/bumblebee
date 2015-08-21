@@ -11,7 +11,6 @@ exports.transform = function (context, data) {
 	{
 		data = data[0];
 		data = data.replace("'", "''");
-		console.log(data);
 	}
 
 	var select = "SELECT count(*) as result FROM " + table_name + " WHERE " + column_name + " = ?;";	

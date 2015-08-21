@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+	<head>
+		<script src="/socket.io/socket.io.js"></script>
+		<script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/react/0.13.3/JSXTransformer.js"></script>
+		<script src="components/entity_table.js"></script>
+		<script src="components/entity_row.js"></script>
+		<script type="text/jsx">
+			var socket = io();
+
+			//hold references to each table component
+			var app;
+			
+			socket.on('row', function(rowObj)
+			{
+				if(app && rowObj[0])
+				{
+					
+					var entity = entityRowProps(rowObj[0]);
+
+					app.setState(function(previousState, currentProps) {
+						//update state of the app
+						var entities = previousState.entities.slice();
+						entities.push(entity);
+						return {"entities" : entities}
+					});
+				}
+			});
+			
+			socket.on('header', function(headerObj)
+			{
+				var target = document.getElementById('root');
+				
+				//create a EntityTable for each entity in the schema
+				var App = React.createClass({
+						getInitialState: function()
+						{
+							return {"entities" : []};
+						},
+						render: function() {
+							var keys = Object.keys(this.props.schema);
+							var schema = this.props.schema;
+							var entities = this.state.entities;
+							return (
+								<div>
+								{
+									keys.map(function(key) {
+										var def = schema[key];
+										var tprops = entityTableProps({key:def});
+										tprops.entities = entities.filter(function(entity){
+											return (entity.class == key);
+										});
+										tprops.ref = key;
+										return (
+											<p>{React.createElement(EntityTable, tprops)}</p>
+										);
+									})
+								}
+								</div>
+							);
+						}
+				});
+				app = React.render(React.createElement(App, headerObj), target);
+			});
+		</script>
+		<style>
+			<style>
+				table.formdata {
+					border: 1px solid #5F6F7E;
+					border-collapse: collapse;
+					margin: 1em 0 2em 0;
+				}
+				table.formdata th {
+					border: 1px solid #5F6F7E;
+					background-color: #E2E2E2;
+					color: #000000;
+					text-align: left;
+					font-weight: normal;
+					padding: 0.2em 0.4em 0.2em 0.4em;
+					margin: 0;
+				}
+				table.formdata td {
+					margin: 0;
+					padding: 0;
+					border: 1px solid #E2E2E2;
+				}
+				table.formdata input {
+					width: 80px;
+					padding: 0.2em 0.4em 0.2em 0.4em;
+					margin: 0;
+					border-width: 0;
+					border-style: none;
+				}
+				p {
+					padding-top: 25px;
+					padding-right: 50px;
+					padding-bottom: 25px;
+					padding-left: 50px;
+				}
+
+			</style>
+		</style>
+	</head>
+	<body>
+		Bumblebee
+		<ul id="messages"></ul>
+		<div id="root"></div>
+	</body>
+</html>
