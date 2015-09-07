@@ -4,6 +4,7 @@
   "description": "Human-assisted ETL",
   "main": "bb.js",
   "dependencies": {
+    "async": "^1.4.2",
     "byline": ">=4.2.1",
     "csv": ">=0.4.5",
     "deasync": ">=0.1.0",
@@ -19,7 +20,8 @@
   },
   "devDependencies": {},
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node bb_web.js",
+    "test": "nodeunit"
   },
   "author": "Taco van Dijk",
   "license": "MIT",
