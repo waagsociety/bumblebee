@@ -40,9 +40,8 @@ exports.transform = function (context, data) {
 		done = true;
 	});
 
-	
 	//to make the transformer synchronous
-	require('deasync').loopWhile(function(){return !done;});
+	require('deasync').loopWhile(function(){ return !done; });
 
 	return result;
 };
