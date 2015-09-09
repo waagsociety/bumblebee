@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
 var fs = require('fs'),
-byline = require('byline'),
-YAML = require('js-yaml'),
-validate = require('jsonschema').validate,
-csv = require('csv'),
-sqlite3 = require('sqlite3').verbose();
+	async = require('async'),
+	byline = require('byline'),
+	YAML = require('js-yaml'),
+	validate = require('jsonschema').validate,
+	csv = require('csv'),
+	sqlite3 = require('sqlite3').verbose();
 
 var log = false;
 
@@ -17,91 +18,94 @@ ResultCode = {
 }
 
 //check if this file is being called as a script or as a module
-if(module.parent == null)
-{
+if(module.parent == null) {
 	run();
 	log = true;
-}
-else
-{
+} else {
 	//export the functions we want to expose here
 	module.exports = {
 	  transformField : transformField,
 	  createTableStatement: createTableStatement,
 	  createInsertStatement: createInsertStatement,
 	  transformFile: transformFile
-  }
+  	};
 }
 
 //run the script from command line arguments
-function run()
-{
+function run() {
 	//read command line arguments
 	var argv = require('optimist')
 	.usage('Transform data according to a configuration and mapping file.\nUsage: $0')
 	.demand(['c','m','d'])
 	.alias('c', 'conf').alias('m', 'mapping').alias('d','data')
 	.argv;
-		transformFile(argv.c, argv.m, argv.d, function(result){
-			console.log(".");//one extra row was processed we can use this to update the server state for example 
-		});
-	}
+
+	transformFile(argv.c, argv.m, argv.d, function(result){
+		console.log(".");//one extra row was processed we can use this to update the server state for example 
+	});
+}
 
 //start the streaming transformation process 
 //provide paths to the configuration files and input
 //callback is called at every transformed row
 //this function may be called from web application for example
-function transformFile(path_schema, path_mapping, path_data, callback)
-{
-	//process schema definitions, create tables if necessary	
-	var schema = YAML.safeLoad(fs.readFileSync(path_schema, 'utf8'));
-	var db_name = path_schema + ".db";
-	var db_cache = new sqlite3.Database(path_schema + ".db");//create or open (R/W) the cache database for the provided schema file
-	Object.keys(schema).forEach(function(e){
-		var statement = createTableStatement(e, schema[e]);
-		db_cache.run(statement);
+function transformFile(path_schema, path_mapping, path_data, callback) {
+	var filesToRead = {},
+		filesContents = {},
+		context = {};
+
+	filesToRead.path_schema = path_schema;
+	filesToRead.path_mapping = path_mapping;
+
+	async.each(Object.keys(filesToRead), function(key, cb){
+		fs.readFile(filesToRead[key], 'utf8', function(err, contents){
+			filesContents[key] = contents;
+			cb(err);
+		});
+	}, function(err){
+		if(err) return callback(err);
+
+		//process schema definitions, create tables if necessary	
+		var schema = YAML.safeLoad(filesContents.path_schema),
+			db_name = path_schema + ".db",
+			db_cache = new sqlite3.Database(path_schema + ".db");//create or open (R/W) the cache database for the provided schema file
+		
+		Object.keys(schema).forEach(function(e){
+			var statement = createTableStatement(e, schema[e]);
+			db_cache.run(statement);
+		});
+
+		//load mappings and data
+		var mapping = YAML.safeLoad(filesContents.path_mapping);
+		var stream = byline(fs.createReadStream(path_data, { encoding: 'utf8' }));
+		var header = undefined;//the first line of data is expected to be a header 
+
+		//start data processing
+		stream.on('data', function(line) {
+			if(header == undefined) {
+				header = line.split(',');
+				context.header = header;
+				callback(null, { header: header });
+			} else {
+				csv.parse(line,function(err, output){ //async
+					context.data = output[0];
+
+					processRow(context, callback);
+				});
+			}
+		});
+
+		context.db_cache = db_cache;
+		context.schema = schema;
+		context.mapping = mapping;
 	});
 
-	//load mappings and data
-	var mapping = YAML.safeLoad(fs.readFileSync(path_mapping, 'utf8'));
-	var header = undefined;//the first line of data is expected to be a header 
-	var stream = byline(fs.createReadStream(path_data, { encoding: 'utf8' }));
-
-	//start data processing
-	stream.on('data', function(line) {
-		if(header == undefined)
-		{
-			header = line.split(',');
-			callback({"header" : header});
-		}
-		else
-		{
-			csv.parse(line,function(err, output){ //async
-				var context = 
-				{
-					"db_cache" : db_cache,
-					"schema" : schema,
-					"mapping" : mapping,
-					"header" : header,
-					"data" : output[0] 
-				};
-				processRow(context,callback);
-			});
-		}
-	});
-
-	return {
-		"db_cache" : db_cache,
-		"schema" : schema,
-		"mapping" : mapping,
-		"header" : header,
-	};
+	return context;
 }
 
 //create a cache table for each schema found in the definition
 //initializes the context variable
-function createTableStatement(entity_name, def)
-{
+function createTableStatement(entity_name, def) {
 	//reduce the properties in each schema definition to a single create statement
 	var statement = Object.keys(def["properties"]).reduce(function(prev,cur){
 		var field_name = cur; 
@@ -116,8 +120,7 @@ function createTableStatement(entity_name, def)
 }
 
 //insert an object into the cache database
-function createInsertStatement(object, def)
-{
+function createInsertStatement(object, def) {
 	var statement = Object.keys(def["properties"]).reduce(function(prev,cur){
 		var field_name = cur; 
 		var value = object[field_name];
@@ -138,8 +141,7 @@ function createInsertStatement(object, def)
 //process one row at a time, according to the specified mapping
 //for each entity in the mapping file, transform the data, 
 //validate the transformed data with the schema.
-function processRow(context, callback)
-{
+function processRow(context, callback) {
 	var objects = context.mapping.map(function(e){ 
 		
 		var entity_name = Object.keys(e)[0];
@@ -160,9 +162,7 @@ function processRow(context, callback)
 			context.db_cache.run(insert);
 			if(log){console.log("create: " + YAML.safeDump(transformed));}
 			return transformed[1];
-		}
-		else
-		{
+		} else {
 			//console.log('x');//not valid
 		}
 	});
@@ -170,9 +170,8 @@ function processRow(context, callback)
 	objects = objects.filter(function(n){ return n != undefined });
 	
 	//only callback if we have something to pass back	
-	if(objects.length > 0)
-	{
-		callback(objects);
+	if(objects.length > 0){
+		callback(null, objects);
 	}
 }
 

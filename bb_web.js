@@ -24,8 +24,9 @@ function start()
 	var d = 'data/TblParlement_Levend.csv';
 
 	//for now just pass each result of the transformation through to the browser via socket.io
-	var context = bb.transformFile(c, m, d, function(result){
+	var context = bb.transformFile(c, m, d, function(err, result){
 		io.sockets.emit('row', result); //send to all sockets
+		console.log(result[0]);
 		process.stdout.write(".");
 	});
 	

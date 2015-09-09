@@ -21,6 +21,7 @@
   "devDependencies": {},
   "scripts": {
     "start": "node bb_web.js",
+    "cli": "node bb.js",
     "test": "nodeunit"
   },
   "author": "Taco van Dijk",
