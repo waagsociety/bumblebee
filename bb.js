@@ -6,7 +6,8 @@ var fs = require('fs'),
 	YAML = require('js-yaml'),
 	validate = require('jsonschema').validate,
 	csv = require('csv'),
-	sqlite3 = require('sqlite3').verbose();
+	sqlite3 = require('sqlite3').verbose(),
+	_ = require('underscore');
 
 var log = false;
 
@@ -15,7 +16,9 @@ ResultCode = {
 	OK : 0, //transformation went okay, no errors
 	FAIL : 1,//transformation failed
 	DUPLICATE : 2 //transformation indicates duplicate key
-}
+};
+
+var transformers = require('./transformers/');
 
 //check if this file is being called as a script or as a module
 if(module.parent == null) {
@@ -70,34 +73,37 @@ function transformFile(path_schema, path_mapping, path_data, callback) {
 			db_name = path_schema + ".db",
 			db_cache = new sqlite3.Database(path_schema + ".db");//create or open (R/W) the cache database for the provided schema file
 		
-		Object.keys(schema).forEach(function(e){
-			var statement = createTableStatement(e, schema[e]);
-			db_cache.run(statement);
-		});
+		return async.eachSeries(Object.keys(schema), createTable, tablesCreated);
 
-		//load mappings and data
-		var mapping = YAML.safeLoad(filesContents.path_mapping);
-		var stream = byline(fs.createReadStream(path_data, { encoding: 'utf8' }));
-		var header = undefined;//the first line of data is expected to be a header 
+		function createTable(entityName, cb){
+			db_cache.run( createTableStatement( entityName, schema[entityName] ), cb );
+		}
 
-		//start data processing
-		stream.on('data', function(line) {
-			if(header == undefined) {
-				header = line.split(',');
-				context.header = header;
-				callback(null, { header: header });
-			} else {
-				csv.parse(line,function(err, output){ //async
-					context.data = output[0];
+		function tablesCreated(err){
+			//load mappings and data
+			var mapping = YAML.safeLoad(filesContents.path_mapping),
+				stream = byline(fs.createReadStream(path_data, { encoding: 'utf8' })),
+				header = undefined;//the first line of data is expected to be a header 
 
-					processRow(context, callback);
-				});
-			}
-		});
+			//start data processing
+			stream.on('data', function(line) {
+				if(header == undefined) {
+					header = line.split(',');
+					context.header = header;
+					callback(null, { header: header });
+				} else {
+					csv.parse(line,function(err, output){ //async
+						context.data = output[0];
 
-		context.db_cache = db_cache;
-		context.schema = schema;
-		context.mapping = mapping;
+						processRow(context, callback);
+					});
+				}
+			});
+
+			context.db_cache = db_cache;
+			context.schema = schema;
+			context.mapping = mapping;
+		}
 	});
 
 	return context;
@@ -105,14 +111,14 @@ function transformFile(path_schema, path_mapping, path_data, callback) {
 
 //create a cache table for each schema found in the definition
 //initializes the context variable
-function createTableStatement(entity_name, def) {
+function createTableStatement(entityName, def) {
 	//reduce the properties in each schema definition to a single create statement
 	var statement = Object.keys(def["properties"]).reduce(function(prev,cur){
-		var field_name = cur; 
-		var type = def["properties"][field_name]["type"];
-		return prev + field_name + " " + type + ", ";
+		var fieldName = cur; 
+		var type = def["properties"][fieldName]["type"];
+		return prev + fieldName + " " + type + ", ";
 
-	},"CREATE TABLE IF NOT EXISTS " + entity_name.replace('.','_') + "( ");
+	},"CREATE TABLE IF NOT EXISTS " + entityName.replace('.','_') + "( ");
 
 	statement = statement.slice(0, - 2);
 	statement += " );"
@@ -122,8 +128,8 @@ function createTableStatement(entity_name, def) {
 //insert an object into the cache database
 function createInsertStatement(object, def) {
 	var statement = Object.keys(def["properties"]).reduce(function(prev,cur){
-		var field_name = cur; 
-		var value = object[field_name];
+		var fieldName = cur; 
+		var value = object[fieldName];
 		if(value != undefined)
 		{
 			value = value.replace(/'/g,"''");//replace all single quotes with double single quotes
@@ -141,37 +147,45 @@ function createInsertStatement(object, def) {
 //process one row at a time, according to the specified mapping
 //for each entity in the mapping file, transform the data, 
 //validate the transformed data with the schema.
-function processRow(context, callback) {
-	var objects = context.mapping.map(function(e){ 
-		
-		var entity_name = Object.keys(e)[0];
-		context.entity_name = entity_name;//save to context as well for use by transformer
+function processRow(context, cb) {
+	return async.map(context.mapping, convertEntity, entitiesConverted);
 
-		var entity = e[entity_name];
-		
-		var transformed = transformEntity(entity_name, entity, context);
-		
-		//schema for the given entity
-		var def = context.schema[entity_name];
-		
-		//validate according to schema
-		if(isValid(def, transformed[0])){
-			transformed[0].class = entity_name; //inject this property for later use
-			transformed[1].class = entity_name; //inject this property for later use
-			var insert = createInsertStatement(transformed[0], def);
+	function convertEntity(container, cb){
+		var keys = Object.keys(container),
+			entityName = keys[0],
+			entity = container[entityName];
+
+		// set on context for use by transformer
+		context.entityName = entityName;
+
+		transformEntity(entityName, entity, context, entityConverted);
+
+		function entityConverted(err, convertedEntity){
+			//schema for the given entity
+			var schema = context.schema[entityName];
+			
+			//validate according to schema
+			if(!isValid(schema, convertedEntity[0])){
+				return cb();
+			}
+
+			convertedEntity[0].class = entityName; //inject this property for later use
+			convertedEntity[1].class = entityName; //inject this property for later use
+
+			var insert = createInsertStatement(convertedEntity[0], schema);
+
 			context.db_cache.run(insert);
-			if(log){console.log("create: " + YAML.safeDump(transformed));}
-			return transformed[1];
-		} else {
-			//console.log('x');//not valid
+
+			if(log) console.log("create: " + YAML.safeDump(convertedEntity));
+
+			cb(null, convertedEntity[1]);
 		}
-	});
-	
-	objects = objects.filter(function(n){ return n != undefined });
-	
-	//only callback if we have something to pass back	
-	if(objects.length > 0){
-		callback(null, objects);
+	}
+
+	function entitiesConverted(err, results){
+		results = _.compact(results);
+
+		cb(err, results.length ? results : undefined);
 	}
 }
 
@@ -181,82 +195,92 @@ function processRow(context, callback) {
 //returns two copies of the object:
 //the first is used for validation
 //the second contains resultcodes for each field
-function transformEntity(entity_name, entity, context)
-{
-	//map the fields to their transformed counterparts
-	var fields = Object.keys(entity).map(function(f){
-		var field_name  = f;
-		var field = entity[f];
-		return transformField(field_name, field, context);
-	});
+function transformEntity(entityName, entity, context, cb) {
+	// map the fields to their transformed counterparts
+	return async.map(Object.keys(entity), transformEntityField, fieldsTransformed);
 
-	//reduce the set of fields to an object
-	var object_to_validate =  fields.reduce(function(obj, k) {
-		var key = Object.keys(k)[1]; //first property is resultcode, second is name of value 
-		obj[key] = k[key];
-		return obj;
-	}, {});
+	function transformEntityField(fieldName, cb){
+		transformField(fieldName, entity[fieldName], context, cb);
+	}
 
-	var object_annotated = fields.reduce(function(obj, k) {
-		var key = Object.keys(k)[1]; //first property is resultcode, second is name of value 
-		obj[key] = k;
-		return obj;
-	}, {});
+	function fieldsTransformed(err, fields){
+		var objectToValidate = {},
+			objectAnnotated = {};
 
-	return [object_to_validate, object_annotated];
+		fields.forEach(function(fieldData){
+			var keys = Object.keys(fieldData);
+			
+			keys.splice(keys.indexOf('resultCode'), 1);
+			
+			var key = keys[0];
+
+			objectToValidate[key] = fieldData[key];
+			objectAnnotated[key] = fieldData;
+		});
+
+		cb(err, [objectToValidate, objectAnnotated]);
+	}
 }
 
 //execute the given chain of transformers and input values
-//return a key value pair: field_name -> transformed value
-function transformField(field_name, field, context)
-{
-	var columns = field.input;
-	var data = {};
+//return a key value pair: fieldName -> transformed value
+function transformField(fieldName, field, context, cb) {
+	var columns = field.input,
+		data = {};
 
-	if(columns != undefined)
-	{
+	// set on context for use by transformer
+	context.fieldName = fieldName;
+
+	if(columns) {
 		//collect the input value
-		data.value = columns.map(function(c){
-			var index = context.header.indexOf(c);
-			var value = context.data[index];
-			return value;
+		data.value = columns.map(function(columnName) {
+			var index = context.header.indexOf(columnName);
+
+			return context.data[index];
 		});
 	}
-	
-	//get the transformer chain
-	var chain = field.transformer;
-	context.field_name = field_name;//save to context as well for use by transformer
 
-	//execute the transformers chained together, input of the second is output of the first and so on.
-	for(var key in chain)
-	{
-		try
-		{
-			var mod = "./transformers/" + chain[key] + ".js";
-			data = require(mod).transform(context,data.value);
-		}
-		catch(e)
-		{
-			console.log(e.stack); //probably transformer not found..
-		}
+	//execute the transformers chained together, input of the second is output of the first and so on
+	return async.eachSeries(field.transformer, applyTransformation, afterChain);
+
+	function applyTransformation(transformerName, cb){
+		var transformer = transformers[transformerName];
+
+		if(!transformer) throw('transformer ' + transformerName + ' not found');
+		
+		data = transformer(context, data.value, function(err, passedData){
+			if(err) return cb(err);
+
+			data = passedData;
+
+			cb();
+		});
+
+		// synchronous transformers return data and don't call cb
+		if(data) setImmediate(cb);
 	}
 
-	var key = field_name;
-	var result = {};
-	result.resultcode = data.resultcode; 
-	result[key] = data.value;
-	return result;
+	function afterChain(err){
+		var key = fieldName,
+			result = {};
+
+		if(!data) console.log('no data');
+
+		result.resultCode = data.resultcode;
+		result[key] = data.value;
+
+		cb(err, result);
+	}
 }
 
 //validates according to json-schema
-function isValid(schema, object)
-{
-	var result = validate(object,schema);
-	if(result.valid == false && log)
-	{
+function isValid(schema, object) {
+	var result = validate(object, schema);
+	if(result.valid == false && log) {
 		console.log("INVALID: " + result.schema.title + ": " + result.errors[0].stack);
 		console.log(object);
 		console.log("\n");
 	}
+
 	return result.valid;
 }

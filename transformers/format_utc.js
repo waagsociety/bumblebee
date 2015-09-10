@@ -1,4 +1,9 @@
+var ResultCode = require('../resultCode');
+
 //format a date value as utc
 exports.transform = function (context, data) {
-	return {"resultcode": ResultCode.OK, "value" : data.toISOString()};
+	return {
+		value: data.toISOString(),
+		resultcode: ResultCode.OK
+	};
 };

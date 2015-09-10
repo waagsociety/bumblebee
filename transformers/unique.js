@@ -1,47 +1,38 @@
 //check if it is really unique by lookup in the database with the fully qualified field_name
 //callback is needed in case transformation take a while
 //returns data if count was 0, returns undefined if duplicate
-exports.transform = function (context, data) {
+exports.transform = function (context, data, cb) {
 
-	var db = context["db_cache"];
-	var table_name = context["entity_name"].replace(".","_");
-	var column_name = context["field_name"];
+	var db = context["db_cache"],
+		tableName = context.entityName.replace(".","_"),
+		columnName = context.fieldName;
 	
-	if(data != undefined && data.constructor === Array)
-	{
+	if(data != undefined && data.constructor === Array) {
 		data = data[0];
 		data = data.replace("'", "''");
 	}
 
-	var select = "SELECT count(*) as result FROM " + table_name + " WHERE " + column_name + " = ?;";	
-	var done = false;
-	
-	var result = {};
-	result.resultcode = ResultCode.FAIL;
+	var select = "SELECT count(*) as result FROM " + tableName + " WHERE " + columnName + " = ?;";
 
-	//sqlite3 is all asynchronous	
-	db.get(select,data,function(err, row) {
-		if(err){
-			console.log("ERROR: ", err.stack)
-		}
-		else{
-			var count = row["result"];
-			var transformed = count > 0 ? undefined : data;
+	db.get(select, data, function(err, row) {
+		var result = {};
+		
+		if(err) {
+			console.log("ERROR: ", err.stack)	
+			result.resultcode = ResultCode.FAIL;
+		} else {
+			var count = row["result"],
+				transformed = count > 0 ? undefined : data;
+
 			result.value = transformed;
-			if(transformed == undefined)
-			{
+
+			if(transformed == undefined) {
 				result.resultcode = ResultCode.DUPLICATE;
-			}
-			else
-			{
+			} else {
 				result.resultcode = ResultCode.OK;
 			}
 		}
-		done = true;
+
+		cb(err, result);
 	});
-
-	//to make the transformer synchronous
-	require('deasync').loopWhile(function(){ return !done; });
-
-	return result;
 };
