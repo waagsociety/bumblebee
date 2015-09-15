@@ -1,8 +1,8 @@
 var ResultCode = require('../resultCode');
 
-exports.transform = function (context, data) {
+exports.transform = function (context, data, string) {
 	return {
-		value: "MEMBER_OF",
+		value: string,
 		resultcode: ResultCode.OK
 	};
 };

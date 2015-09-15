@@ -25,7 +25,10 @@
     title: "tnl.person"
     description: "A person in the TNL database"
     type: "object"
-    properties: 
+    properties:
+      nodeType:
+        description: "The type it has in neo4j"
+        type: "string"
       id: 
         description: "The unique identifier for a person"
         type: "string"

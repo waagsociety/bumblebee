@@ -1,3 +1,5 @@
+var ResultCode = require('../resultCode');
+
 //check if it is really unique by lookup in the database with the fully qualified field_name
 //callback is needed in case transformation take a while
 //returns data if count was 0, returns undefined if duplicate

@@ -50,9 +50,9 @@ function run() {
 
 //start the streaming transformation process 
 //provide paths to the configuration files and input
-//callback is called at every transformed row
+//cb is called at every transformed row
 //this function may be called from web application for example
-function transformFile(path_schema, path_mapping, path_data, callback) {
+function transformFile(path_schema, path_mapping, path_data, cb, done) {
 	var filesToRead = {},
 		filesContents = {},
 		context = {};
@@ -66,7 +66,7 @@ function transformFile(path_schema, path_mapping, path_data, callback) {
 			cb(err);
 		});
 	}, function(err){
-		if(err) return callback(err);
+		if(err) return cb(err);
 
 		//process schema definitions, create tables if necessary	
 		var schema = YAML.safeLoad(filesContents.path_schema),
@@ -85,24 +85,49 @@ function transformFile(path_schema, path_mapping, path_data, callback) {
 				stream = byline(fs.createReadStream(path_data, { encoding: 'utf8' })),
 				header = undefined;//the first line of data is expected to be a header 
 
-			//start data processing
-			stream.on('data', function(line) {
-				if(header == undefined) {
-					header = line.split(',');
-					context.header = header;
-					callback(null, { header: header });
-				} else {
-					csv.parse(line,function(err, output){ //async
-						context.data = output[0];
-
-						processRow(context, callback);
-					});
-				}
-			});
 
 			context.db_cache = db_cache;
 			context.schema = schema;
 			context.mapping = mapping;
+
+			var pendingLines = 0,
+				ended = false,
+				allEntities = [];
+
+			function processData(line) {
+				if(header == undefined) {
+					header = line.split(',');
+					context.header = header;
+					cb(null, { header: header });
+				} else {
+					pendingLines++;
+					csv.parse(line,function(err, output){ //async
+						context.data = output[0];
+
+						processRow(context, lineDone);
+					});
+				}
+			}
+			
+			//start data processing
+			stream.on('data', processData);
+
+			stream.on('end', end);
+
+			function lineDone(err, entities){
+				if(err) console.log(err);
+
+				pendingLines--;
+				allEntities.push.apply(allEntities, entities);
+
+				cb(err, entities);
+				
+				if(ended && !pendingLines && done) done(null, allEntities);
+			}
+
+			function end(){
+				ended = true;
+			}
 		}
 	});
 
@@ -157,6 +182,8 @@ function processRow(context, cb) {
 
 		// set on context for use by transformer
 		context.entityName = entityName;
+
+		console.log(entityName, entity, container);
 
 		transformEntity(entityName, entity, context, entityConverted);
 
@@ -244,20 +271,37 @@ function transformField(fieldName, field, context, cb) {
 	return async.eachSeries(field.transformer, applyTransformation, afterChain);
 
 	function applyTransformation(transformerName, cb){
+		var transformerArguments = [context, data.value];
+
+		if(transformerName.indexOf('(') > -1){
+			var result = /\((.+)\)/.exec(transformerName),
+				transformerParameter = result && result[1];
+
+			transformerName = transformerName.split('(')[0];
+
+			if(transformerParameter){
+				transformerArguments.push(transformerParameter);
+			}
+		}
+
+		transformerArguments.push(transformerCb);
+
 		var transformer = transformers[transformerName];
 
 		if(!transformer) throw('transformer ' + transformerName + ' not found');
 		
-		data = transformer(context, data.value, function(err, passedData){
+		data = transformer.apply( null, transformerArguments );
+
+		// synchronous transformers return data and don't call cb
+		if(data) setImmediate(cb);
+
+		function transformerCb(err, passedData){
 			if(err) return cb(err);
 
 			data = passedData;
 
 			cb();
-		});
-
-		// synchronous transformers return data and don't call cb
-		if(data) setImmediate(cb);
+		}
 	}
 
 	function afterChain(err){

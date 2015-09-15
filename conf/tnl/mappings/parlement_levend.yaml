@@ -1,111 +1,75 @@
 # transformations are executed in order
 # compound key creation
 - tnl.organisation:
-        id:
-                transformer: 
-                        - generate_id #find_id, compound_id etc.
-
-
-        name:
-                input: 
-                        - source
-                transformer:
-                        - unique
-                        - copy
-                        - join
-
-        type:
-                input: 
-                        - partij
-                transformer:
-                        - literal_political_party
-
-- tnl.organisation:
-        id:
-                transformer: 
-                        - generate_id
-        name:
-                input: 
-                        - partij
-                transformer:
-                        - unique
-                        - split
-                        - join
-        type:
-                input: 
-                        - source
-                transformer:
-                        - literal_parlement
+    id:
+      transformer: 
+        - generate_id
+    name:
+      input:
+        - source
+      transformer:
+        - unique
+        - copy
+        - join
+    classification:
+      transformer:
+        - literal(POLITICAL_PARTY)
 
 - tnl.person:
-        id:
-                input: 
-                        - link
-                transformer:
-                        - unique
-                        - copy
-                        - join
+    id:
+      input: 
+        - link
+      transformer:
+        - unique
+        - copy
+        - join
+    name: 
+      input:
+        - voornamen
+        - achternaam
+      transformer:
+        - merge
 
-        name: 
-                input:
-                        - voornamen
-                        - achternaam
-                transformer:
-                        - merge
-
-        birthdate:
-                input: 
-                        - geboortedatum
-                transformer:
-                        - parse_date
-                        - format_utc
-
-- tnl.relation:
-        id:
-                transformer:
-                        - generate_id
-
-        subject:
-                input: 
-                        - link
-                transformer: 
-                        - join
-
-        object:
-                input:  
-                        - partij
-                transformer:
-                        - split
-                        - match_organisation
-        type:
-                transformer:
-                        - literal_membership
-
-        span:
-                transformer:
-                        - explicit_null
+    birthdate:
+      input: 
+        - geboortedatum
+      transformer:
+        - parse_date
+        - format_utc
 
 - tnl.relation:
-        id:
-                transformer:
-                        - generate_id
+    id:
+      transformer:
+        - generate_id
+    subject:
+      input: 
+        - link
+      transformer: 
+        - join
+    object:
+      input:  
+        - partij
+      transformer:
+        - split
+        - match_organisation
+    classification:
+      transformer:
+        - literal(MEMBER_OF)
 
-        subject:
-                input: 
-                        - link
-                transformer: 
-                        - join
-
-        object:
-                input:  
-                        - source
-                transformer:
-                        - match_organisation
-
-        type:
-                transformer:
-                        - literal_membership
-
-        span:
-                transformer:
-                        - explicit_null
+- tnl.relation:
+    id:
+      transformer:
+        - generate_id
+    subject:
+      input: 
+        - link
+      transformer: 
+        - join
+    object:
+      input:  
+        - source
+      transformer:
+        - match_organisation
+    classification:
+      transformer:
+        - literal(MEMBER_OF)
