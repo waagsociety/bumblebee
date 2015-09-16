@@ -1,6 +1,9 @@
 # transformations are executed in order
 # compound key creation
 - tnl.organisation:
+    type:
+      transformer:
+        - literal(tnl:Organisation)
     id:
       transformer: 
         - generate_id
@@ -11,11 +14,26 @@
         - unique
         - copy
         - join
-    classification:
+
+- tnl.organisation:
+    type:
       transformer:
-        - literal(POLITICAL_PARTY)
+        - literal(tnl:PoliticalParty)
+    id:
+      transformer: 
+        - generate_id
+    name:
+      input:
+        - partij
+      transformer:
+        - unique
+        - copy
+        - join
 
 - tnl.person:
+    type:
+      transformer:
+        - literal(tnl:Person)
     id:
       input: 
         - link
@@ -38,38 +56,38 @@
         - format_utc
 
 - tnl.relation:
+    type:
+      transformer:
+        - literal(tnl:member)
     id:
       transformer:
         - generate_id
-    subject:
+    from:
       input: 
         - link
       transformer: 
         - join
-    object:
+    to:
       input:  
         - partij
       transformer:
         - split
         - match_organisation
-    classification:
-      transformer:
-        - literal(MEMBER_OF)
 
 - tnl.relation:
     id:
       transformer:
         - generate_id
-    subject:
+    from:
       input: 
         - link
       transformer: 
         - join
-    object:
+    to:
       input:  
         - source
       transformer:
         - match_organisation
     classification:
       transformer:
-        - literal(MEMBER_OF)
+        - literal(MEMBERSHIPSTATUS)
