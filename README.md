@@ -1,12 +1,18 @@
 ###Bumblebee data transformer in the skies
 
-Running from CL:
-```node bb.js```
+How to use:
 
-Running with interface:
-```npm start```
+create/modify `package.json`
+(to create you can use `npm init` command)
 
+add bumblebee under dependencies like this:
+```{
+	...
+	"dependencies": {
+		"bumblebee": "https://github.com/waagsociety/bumblebee"
+	}
+}```
 
-Tests:
-run tests using
-```npm test```
+then `npm install`
+
+`var bb = require('bumblebee');`
