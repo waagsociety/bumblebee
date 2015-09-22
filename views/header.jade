@@ -1,3 +1,6 @@
-h1!= (env.name || "Bumblebee") +", online since " + env.startTime.toString().substring(0,21) + ' (powered by <a href="https://github.com/waagsociety/bumblebee">bumblebee</a>)'
+h1
+	!= (env.name || "Bumblebee") +", online since " + env.startTime.toString().substring(0,21) + ' (powered by '
+	a(href="https://github.com/waagsociety/bumblebee") bumblebee
+	!= ')'
 nav
 	a(href="/") Datasets
