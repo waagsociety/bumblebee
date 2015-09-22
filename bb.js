@@ -20,37 +20,6 @@ ResultCode = {
 
 var transformers = require( './transformers/' );
 
-//check if this file is being called as a script or as a module
-if( module.parent == null ) {
-  run();
-  log = true;
-} else {
-  //export the functions we want to expose here
-  module.exports = {
-    transformField : transformField,
-    createTableStatement: createTableStatement,
-    createInsertStatement: createInsertStatement,
-    transformFile: transformFile
-  };
-}
-
-//run the script from command line arguments
-function run() {
-  //read command line arguments
-  var argv = require( 'optimist' )
-    .usage( 'Transform data according to a configuration and mapping file.\nUsage: $0' )
-    .demand( ['c', 'm', 'd'] )
-    .alias( 'c', 'conf' ).alias( 'm', 'mapping' ).alias( 'd','data' )
-    .argv;
-
-  return transformFile( argv.c, argv.m, argv.d, transformIterationCb );
-
-  function transformIterationCb( result ) {
-    // one extra row was processed we can use this to update the server state for example 
-    console.log( "." );
-  }
-}
-
 //start the streaming transformation process 
 //provide paths to the configuration files and input
 //cb is called at every transformed row
@@ -344,3 +313,10 @@ function isValid( schema, object ) {
 
   return result.valid;
 }
+
+module.exports = {
+  transformField : transformField,
+  // createTableStatement: createTableStatement,
+  // createInsertStatement: createInsertStatement,
+  transformFile: transformFile
+};

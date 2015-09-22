@@ -9,14 +9,13 @@ var bb = require('./bb');
 
 //main entry point
 app.get('/', function(req, res){
-	res.sendFile(__dirname + '/index.html');
-	setTimeout(function(){ start(); }, 1000);
+	//res.sendFile(__dirname + '/index.html');
+	//setTimeout(function(){ start(); }, 1000);
 });
 
 app.use(express.static('public'));
 
-function start()
-{
+function start(){
 	//for now hardcoded
 	//TODO: make configurable / create GUI for this.
 	var c = 'conf/tnl/tnl_schema.yaml';

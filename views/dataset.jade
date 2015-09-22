@@ -1,0 +1,19 @@
+extends layout
+
+block content
+	- var filename = req.params.filename, dataset = env.datasets[filename]
+	if !dataset
+		h1.error= "Dataset " + filename + " not found :("
+	else
+		h1= req.params.filename
+		table
+			thead
+				tr
+					td entries
+					td modified
+					td size
+			tbody
+				tr
+					td= dataset.entries
+					td= dataset.modified.toISOString().substring(0,10)
+					td= dataset.size

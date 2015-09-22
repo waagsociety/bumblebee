@@ -13,10 +13,8 @@
 			//hold references to each table component
 			var app;
 			
-			socket.on('row', function(rowObj)
-			{
-				if(app && rowObj[0])
-				{
+			socket.on('row', function(rowObj){
+				if(app && rowObj[0]){
 					
 					var entity = entityRowProps(rowObj[0]);
 
@@ -29,15 +27,13 @@
 				}
 			});
 			
-			socket.on('header', function(headerObj)
-			{
+			socket.on('header', function(headerObj){
 				var target = document.getElementById('root');
 				
 				//create a EntityTable for each entity in the schema
 				var App = React.createClass({
-						getInitialState: function()
-						{
-							return {"entities" : []};
+						getInitialState: function() {
+							return { entities : [] };
 						},
 						render: function() {
 							var keys = Object.keys(this.props.schema);

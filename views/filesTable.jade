@@ -1,0 +1,19 @@
+table
+	thead
+		tr
+			td filename
+			td lines
+			td filesize
+			td modified
+	tbody
+		for dataset, i in env.datasets
+			tr(class=dataset.processed ? 'processed' : '')
+				td
+					a(href="/datasets/" + i)= i
+				td= dataset.entries
+				td= dataset.size
+				td= dataset.modified.toISOString().substring(0, 10)
+		tr
+			form(action="/upload", method="post", name="upload", enctype="multipart/form-data")
+				td
+					input(type="file", name="dataset", onchange="upload.submit()")
