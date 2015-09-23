@@ -7,17 +7,13 @@ create/modify `package.json`
 
 add bumblebee under dependencies like this:
 
-```{
-
-	...
-
-	"dependencies": {
-
-		"bumblebee": "https://github.com/waagsociety/bumblebee"
-
-	}
-
-}```
+```
+{ /*...*/
+  "dependencies": {
+    "bumblebee": "https://github.com/waagsociety/bumblebee"
+  }
+}
+```
 
 then `npm install`
 
@@ -32,16 +28,12 @@ it all starts with a source file. One uploads a csv file to the web interface, i
 ###Status
 Currently transforming is implemented with the mapping file, as well as schemas. Still to be done:
 
--web interface
-
---upload to web interface
-
---prompting the user for confirmations and corrections, storing these
-
--ability to split into two records from within a transformation (key)
-
--storing corrections for future use for same dataset
-
+- web interface
+- upload to web interface
+- prompting the user for confirmations and corrections, storing these
+- ability to split into two records from within a transformation (key)
+- storing corrections for future use for same dataset
 
 future:
--schema and mapping editor
+
+- schema and mapping editor
