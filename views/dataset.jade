@@ -17,3 +17,7 @@ block content
 					td= dataset.entries
 					td= dataset.modified.toISOString().substring(0,10)
 					td= dataset.size
+		select#mapping
+			each map in env.mappings
+				option= map
+		button#quickconvert quick convert

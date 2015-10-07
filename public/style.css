@@ -3,9 +3,37 @@ body{
 	margin: 0 1em;
 }
 
+#mainnav{
+	background-color: gray;
+	padding: 10px;
+}
+
+#mainnav a{
+	background-color: yellow;
+	padding: 5px;
+	margin: 5px;
+	text-decoration: none;
+	color: black;
+	font-weight: bold;
+}
+
+#mainnav a:first-child{
+	margin-left: 0;
+}
+
+#mainnav a:hover{
+	background-color: white;
+}
+
 h1{
 	background-color: #22CC00;
 	font-family: sans-serif;
 	color: white;
 	padding: 5px;
+}
+
+
+
+#quick-convert-output ul{
+	margin-top: 10px;
 }

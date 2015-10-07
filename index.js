@@ -12,26 +12,28 @@ module.exports.files = files;
 module.exports.environment = {
 	updateAllDatasets: updateAllDatasets,
 	loadDataset: loadDataset,
-	startTime: new Date()
+	startTime: new Date(),
+	quickConvert: bb.quickConvert
 };
 
 var env = module.exports.environment;
 
 updateAllDatasets();
+updateAllMappings();
+loadSchemas();
 
 function updateAllDatasets(cb){
 	return async.waterfall([
 		_.partial(files.getFolders, ['data']),
-		chainLogger(),
 		getDataFilesProperties,
-		setOnEnvironment
+		setDatasetsOnEnvironment
 	], cb || function(err, dSets){ console.log(err || 'all datasets loaded: ', dSets) });
 }
 
 function loadDataset(filename, cb){
 	return async.waterfall([
 		_.partial(getDataFilesProperties, { data: [filename] }),
-		setOnEnvironment
+		setDatasetsOnEnvironment
 	], cb);
 }
 
@@ -48,7 +50,7 @@ function getDataFilesProperties(results, cb){
 
 }
 
-function setOnEnvironment(files, cb){
+function setDatasetsOnEnvironment(files, cb){
 	var dSets = env.datasets = env.datasets || {};
 	Object.keys(files).forEach(setOnDataSets);
 
@@ -60,6 +62,29 @@ function setOnEnvironment(files, cb){
 	}
 
 	cb(null, dSets);
+}
+
+function updateAllMappings(cb){
+	return async.waterfall([
+		_.partial(files.getFolders, ['mappings']),
+		setMappingsOnEnvironment
+	], cb || function(err, dSets){ console.log(err || 'all mappings loaded: ', dSets) });
+}
+
+function setMappingsOnEnvironment(container, cb){
+	var mappings = env.mappings = container.mappings;
+	cb();
+}
+
+function loadSchemas(cb){
+	return async.waterfall([
+		_.partial(files.getFolders, ['schemas']),
+		setSchemasOnEnvironment
+	], cb || function(err, dSets){ console.log(err || 'all schemas loaded: ', dSets) });
+}
+
+function setSchemasOnEnvironment(container, cb){
+	var schemas = env.schemas = container.schemas;
 }
 
 function chainLogger(identifier){

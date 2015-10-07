@@ -11,6 +11,8 @@ var cwd = process.cwd();
 
 module.exports = {
   init: function( options, environment, callback ) {
+  	var env = environment;
+
   	var uploadFolders = options.uploadFolders || {
 					dataset: cwd + '/data'
 				},
@@ -65,8 +67,25 @@ module.exports = {
 		
 		app.getView( '/', 'index' );
 
+		app.getView('/mappings', 'mappings');
+		app.getView('/schemas', 'schemas');
+
 		app.alias('/datasets', '/');
 		app.getView('/datasets/:filename', 'dataset');
+		app.get('/datasets/:filename/quickconvert/:mapping', function(req, res, next){
+			var dataset = req.params.filename,
+					mapping = req.params.mapping;
+
+					console.log(dataset, mapping, env.datasets, env.mappings);
+
+			if(!env.datasets[req.params.filename] || env.mappings.indexOf(req.params.mapping) === -1) return next();
+			
+			env.quickConvert(dataset, mapping, function(err, results){
+				if(err) return res.status(500).send(err);
+console.log(results);
+				res.json(results);
+			});
+		});
 
 	  var server = app.listen(options.port || 3000, function(){
 	  	var address = server.address();
