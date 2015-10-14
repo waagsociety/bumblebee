@@ -7,6 +7,8 @@ var fs = require( 'fs' ),
   validate = require( 'jsonschema' ).validate,
   csv = require( 'csv' ),
   sqlite3 = require( 'sqlite3' ).verbose(),
+  csvParser = require('./csv_parse'),
+  uuid = require('node-uuid'),
   _ = require( 'underscore' );
 
 var log = true;
@@ -18,47 +20,32 @@ ResultCode = {
   DUPLICATE : 2 //transformation indicates duplicate key
 };
 
-var delimiters = [',', '.', ':', ';', '|', '$', '/', '\\', '-', '_', '`', '~', '\'', '"'];
-
-var relationTypes = [
-      'tnl:same', 'tnl:parent', 'tnl:related', 'tnl:member', 'tnl:boardmember', 'tnl:commissioner', 'tnl:advisor', 'tnl:employee', 'tnl:lobbyist'
-    ],
-    relationWhitelist = ['id', 'type', 'from', 'to', 'data'],
-    pitWhitelist = ['id', 'type', 'name', 'data'];
-
-function getDelimiter(line){
-  return delimiters.map(function(character){
-    return {
-      items: line.split(character),
-      delimiter: character
-    };
-  }).sort(function(a, b){
-    return a.items.length - b.items.length;
-  }).pop().delimiter;
-}
-
-// for now have in memory cache only
-var cache = {};
-
 var transformers = require( './transformers/' );
 
 //start the streaming transformation process 
 //provide paths to the configuration files and input
 //cb is called at every transformed row
 //this function may be called from web application for example
-function transformFile( path_schema, path_mapping, path_data, cb, done ) {
-  var filesToRead = {},
+function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
+  var filesToRead = {
+        path_schema: path_schema,
+        path_mapping: path_mapping,
+        path_data: path_data
+      },
       filesContents = {},
-      context = {
-        cache: cache
-      };
+      context = {},
+      allEntities = [],
+      entitiesWithRevisionPending = {},
+      collectedRevisionsCb;
 
-  filesToRead.path_schema = path_schema;
-  filesToRead.path_mapping = path_mapping;
+  bucket.onReceiveEdit(receiveEdit);
 
-  async.each( Object.keys( filesToRead ), readFile, afterFilesRead);
-
-  return context;
+  return async.waterfall([
+    _.partial( async.each, Object.keys( filesToRead), readFile ),
+    parseFiles,
+    extractEntities,
+    collectRevisedEntities
+  ], _.partial( done, _, allEntities ) );
 
   function readFile( key, cb ) {
     return fs.readFile( filesToRead[key], 'utf8', setFileRef );
@@ -69,133 +56,124 @@ function transformFile( path_schema, path_mapping, path_data, cb, done ) {
     }
   }
 
-  function afterFilesRead( err ) {
-    if( err ) return cb( err );
-
+  function parseFiles( cb ) {
     //process schema definitions, create tables if necessary  
     var schema = YAML.safeLoad( filesContents.path_schema ),
         mapping = YAML.safeLoad( filesContents.path_mapping ),
-        //stream = byline( fs.createReadStream( path_data, { encoding: 'utf8' } ) ),
-        header = undefined;//the first line of data is expected to be a header
+        parsedFile = csvParser( filesContents.path_data );
 
-    
-    context.cache = cache;
     context.schema = schema;
     context.mapping = mapping;
+    context.parsedFile = parsedFile;
 
-    var pendingLines = 0,
-        ended = false,
-        allEntities = [];
+    setImmediate( _.partial( cb, null, context ) );
+  }
 
-    //start data processing
-    // stream.on( 'data', processData );
+  function extractEntities( context, cb ) {
+    return async.eachSeries( context.parsedFile.objects, extractEntitiesFromObject, cb );
 
-    // stream.on( 'end', end );
-    
-    return fs.readFile(path_data, 'utf8', function(err, contents){
-      if(err) return done(err);
+    function extractEntitiesFromObject( object, cb ) {
+      context.dataByColumnName = object;
 
-      var parsedFile = require('./csv_parse')(contents);
-      
-      async.eachSeries(parsedFile.objects, function(object, cb){
-        context.dataByColumnName = object;
+      return async.map( context.mapping, createEntity, entitiesCreated );
 
-        return processRow(context, lineDone);
+      function createEntity(entityContainer, cb) {
+        var keys = Object.keys( entityContainer ),
+            entityName = keys[0],
+            entityDefinition = entityContainer[entityName];
 
-        function lineDone( err, entities ){
-          if( err ) console.log( err );
+        // set on context for use by transformer
+        context.entityName = entityName;
 
-          allEntities.push.apply( allEntities, entities );
-          cb( err, entities );
+        return async.waterfall( [
+          _.partial( transformEntity, entityName, entityDefinition, context ),
+          validateEntity
+        ], cb );
+
+        function validateEntity( transformedEntity, cb ) {
+          //schema for the given entity
+          var schema = context.schema[entityName];
+
+          ignoreSchema = false;
+
+          //validate according to schema
+          transformedEntity.isValid = isValid( schema, transformedEntity );
+
+          if( !transformedEntity.isValid ){
+            transformedEntity.sourceData = object;
+            transformedEntity.schema = schema;
+          }
+
+          cb( null, transformedEntity );
         }
-      }, _.partial( done, _, allEntities ) );
-    });
-
-    return;
-
-    function processData( line ) {
-      if( header == undefined ) {
-        context.delimiter = getDelimiter(line);
-
-        header = line.split( context.delimiter );
-        context.header = header;
-
-        return cb( null, { header: header } );
       }
 
-      pendingLines++;
+      function entitiesCreated( err, entities ) {
+        var validEntities = [];
 
-      return csv.parse( line, { delimiter: context.delimiter }, csvParseCb);
-    }
+        entities.forEach(function(entity){
+          if(entity.isValid){
+            delete entity.isValid;
+            validEntities.push(entity);
+            return;
+          }
 
-    function csvParseCb( err, output ) {
-      if(err) return done(err);
-      var data = output[0];
+          delete entity.isValid;
 
-      context.dataByColumnName = {};
-      context.header.forEach(setDataByColumnName);
+          var sourceData = entity.sourceData,
+              schema = entity.schema;
 
-      processRow( context, lineDone );
+          delete entity.sourceData;
+          delete entity.schema;
 
-      function setDataByColumnName(key, index){
-        context.dataByColumnName[key] = data[index];
+          var requiredKeys = Object.keys(entity),
+              revisionId = uuid.v4(),
+              transportableEntity = {
+                schema: schema,
+                requiredKeys: requiredKeys,
+                sourceData: sourceData,
+                currentValues: entity,
+                revisionId: revisionId
+              };
+
+          entitiesWithRevisionPending[revisionId] = transportableEntity;
+
+          bucket.requestEdit( transportableEntity );
+        });
+
+        allEntities.push.apply(allEntities, validEntities);
+
+        cb( err );
       }
-    }
-
-    function lineDone( err, entities ) {
-      if( err ) console.log( err );
-
-      pendingLines--;
-      allEntities.push.apply( allEntities, entities );
-
-      cb( err, entities );
-      
-      //if( ended && !pendingLines && done ) done( null, allEntities );
-    }
-
-    function end(){
-      ended = true;
-      if(!pendingLines) done(null, allEntities);
-    }
-  }
-}
-
-//process one row at a time, according to the specified mapping
-//for each entity in the mapping file, transform the data, 
-//validate the transformed data with the schema.
-function processRow(context, cb) {
-  return async.map( context.mapping, convertEntity, entitiesConverted );
-
-  function convertEntity(entityContainer, cb){
-    var keys = Object.keys( entityContainer ),
-        entityName = keys[0],
-        entity = entityContainer[entityName];
-
-    // set on context for use by transformer
-    context.entityName = entityName;
-
-    transformEntity(entityName, entity, context, entityConverted);
-
-    function entityConverted(err, convertedEntity){
-      //schema for the given entity
-      var schema = context.schema[entityName];
-
-      ignoreSchema = false;
-      //validate according to schema
-      if( !ignoreSchema && !isValid( schema, convertedEntity[0] ) ){
-        return cb();
-      }
-
-      //if(log) console.log( "create: " + JSON.stringify( convertedEntity ) );
-
-      cb( null, convertedEntity[1] );
     }
   }
 
-  function entitiesConverted( err, results ) {
-    results = _.compact( results );
+  function collectRevisedEntities( cb ) {
+    if( !Object.keys( entitiesWithRevisionPending ).length ) return cb();
 
-    cb( err, results.length ? results : undefined );
+    collectedRevisionsCb = cb;
+  }
+
+  function receiveEdit(editType, data, cb){
+    console.log('receiveEdit', editType, data, cb.toString());
+    
+    if( editType === 'dismiss' ) {
+      delete entitiesWithRevisionPending[data.revisionId];
+    } else {
+      var item = entitiesWithRevisionPending[data.revisionId],
+          itemIsValid = isValid(data.values, item.schema);
+
+      if(!itemIsValid) return;
+
+      allEntities.push(data.values);
+      delete entitiesWithRevisionPending[data.revisionId];
+    }
+
+    cb();
+
+    if( !Object.keys( entitiesWithRevisionPending ).length ){
+      collectedRevisionsCb();
+    }
   }
 }
 
@@ -214,12 +192,11 @@ function transformEntity( entityName, entity, context, cb ) {
   }
 
   function fieldsTransformed( err, fields ){
-    var objectToValidate = {},
-        objectAnnotated = {};
+    var objectToValidate = {};
 
     fields.forEach( declareObject );
 
-    return cb(err, [objectToValidate, objectAnnotated]);
+    return cb( err, objectToValidate );
 
     function declareObject( fieldData ){
       var keys = Object.keys( fieldData );
@@ -229,7 +206,6 @@ function transformEntity( entityName, entity, context, cb ) {
       var key = keys[0];
 
       objectToValidate[key] = fieldData[key];
-      objectAnnotated[key] = fieldData;
     }
   }
 }
@@ -302,77 +278,46 @@ function transformField( fieldName, field, context, cb ) {
   }
 }
 
-quickConvert('TblParlementLoopbaan-modified', 'parlement_loopbaan.yaml', console.log.bind('test completed'));
+var postProcessor,
+    schemaPath;
 
-function quickConvert(dataset, mapping, cb){
-  var schemaPath = 'schemas/tnl_schema.yaml',
-      mappingPath = 'mappings/' + mapping,
+function setPostProcessor(fun){
+  postProcessor = fun;
+}
+
+function setSchemaPath(path){
+  schemaPath = 'schemas/' + path;
+}
+
+function transform(dataset, mapping, bucket){
+  var mappingPath = 'mappings/' + mapping,
       dataPath = 'data/' + dataset;
   
   var rowsProcessed = 0;
   var sentFirstRow = false;
   
-  return transformFile(schemaPath, mappingPath, dataPath, progressCb, finishCb);
-
-  function progressCb( err, entities ) {
-    exitLog('progressCb', entities);
-    ++rowsProcessed;
-
-    if(!(rowsProcessed % 64)) console.log('done ' + rowsProcessed + ', another sixtyfour');
-    else if(!(rowsProcessed % 32)) console.log('done ' + rowsProcessed + ',another thirtytwo');
-    else if(!(rowsProcessed % 16)) console.log('done ' + rowsProcessed + ',another sixteen');
-    else if(!(rowsProcessed % 8)) console.log('done ' + rowsProcessed + ',another eight');
-    
-    if(!entities.header && !sentFirstRow){
-      sentFirstRow = true;
-      cb(err, entities);
-    }
-  }
+  return transformFile(schemaPath, mappingPath, dataPath, bucket, finishCb);
 
   function finishCb( err, results ) {
     if(err) return done(err);
     
     console.log('yay, writing output');
 
-    var pits = [],
-        relations = [];
-
-    results.forEach(putInBucket);
-
-    //transform from and to on relations to IDs of referenced items
-    relations = relations.map(setFromToToIds);
-
-    return async.parallel([
-      _.partial(fs.writeFile, './output/' + dataset + '-pits.ndjson', pits.join('\n')),
-      _.partial(fs.writeFile, './output/' + dataset + '-relations.ndjson', relations.join('\n')),
-    ], done);
-
-    function putInBucket( entity ){
-      var flattenedEntity = flattenEntity( entity ),
-          isRelation = ( relationTypes.indexOf( flattenedEntity.type ) > -1 ),
-          type = isRelation ? 'relation' : 'pit',
-          bucket = isRelation ? relations : pits;
-
-      flattenedEntity = enforceFormatting(flattenedEntity, isRelation ? relationWhitelist : pitWhitelist);
-
-      var typeCache = cache[type + 's'] = cache[type + 's'] || {},
-          uniqueIdentifier = isRelation ?
-            ( flattenedEntity.from + '-' + flattenedEntity.to ) :
-            flattenedEntity.name;
-
-      if(typeCache[uniqueIdentifier]) return;
-
-      typeCache[uniqueIdentifier] = flattenedEntity;
-      bucket.push( JSON.stringify( flattenedEntity ) );
+    if(postProcessor){
+      return postProcessor(results, writeFiles);
     }
 
-    function setFromToToIds(relation){
-      var objRelation = JSON.parse(relation);
-      
-      objRelation.from = cache.pits[objRelation.from].id;
-      objRelation.to = cache.pits[objRelation.to].id;
+    return writeFiles(null, [{
+      fileSuffix: dataset + '.json',
+      contents: JSON.stringify(results, null, 2)
+    }]);
 
-      return JSON.stringify(objRelation);
+    function writeFiles(err, files){
+      return async.parallel( files.map( createWriteFunction ), done );
+
+      function createWriteFunction( fileContainer ) {
+        return _.partial( fs.writeFile, './output/' + dataset + fileContainer.fileSuffix, fileContainer.contents );
+      }
     }
 
     function done(err){
@@ -390,40 +335,21 @@ function flattenEntity( entity ) {
   return flattenedEntity;
 
   function declarePropertyOnFlattenedEntity( key ) {
-    flattenedEntity[key] = entity[key][key] || entity[key];
+    if( entity[key] !== undefined ) flattenedEntity[key] = entity[key][key] || entity[key];
   }
-}
-
-function enforceFormatting(entity, whitelist){
-  Object.keys(entity).forEach(function(key){
-    if(whitelist.indexOf(key) === -1){
-      entity.data = entity.data || {};
-      entity.data[key] = entity[key];
-      delete entity[key];
-    }
-  });
-  return entity;
 }
 
 //validates according to json-schema
 function isValid( schema, object ) {
-  var result = validate( object, schema );
-
-  if( result.valid == false && log ) {
-    console.log( "INVALID: " + result.schema.title + ": " + result.errors[0].stack );
-    console.log( object );
-    console.log( "\n" );
-  }
-
-  return result.valid;
+  return validate( object, schema ).valid;
 }
 
 module.exports = {
   transformField : transformField,
-  // createTableStatement: createTableStatement,
-  // createInsertStatement: createInsertStatement,
   transformFile: transformFile,
-  quickConvert: quickConvert
+  transform: transform,
+  setPostProcessor: setPostProcessor,
+  setSchemaPath: setSchemaPath
 };
 
 function exitLog(){

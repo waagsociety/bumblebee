@@ -18,6 +18,7 @@ block content
 					td= dataset.modified.toISOString().substring(0,10)
 					td= dataset.size
 		select#mapping
+			option choose one
 			each map in env.mappings
 				option= map
-		button#quickconvert quick convert
+		a#transform Transform

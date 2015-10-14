@@ -1,0 +1,15 @@
+extends layout
+
+block append header
+	script(src="/socket.io/socket.io.js")
+	script(src="/ZSchema-browser.js")
+block content
+	- var filename = req.params.filename, dataset = env.datasets[filename], mapping = req.params.mapping;
+	if !dataset
+		h1.error= "Dataset " + filename + " not found :("
+	else
+		h2= 'transforming ' + req.params.filename + ' with ' + mapping
+		span#socketkey(data-socketkey=socketKey)= socketKey
+		section#pending-revisions
+			ul
+			span#pending-revisions-summary

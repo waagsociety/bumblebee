@@ -13,7 +13,7 @@ module.exports.environment = {
 	updateAllDatasets: updateAllDatasets,
 	loadDataset: loadDataset,
 	startTime: new Date(),
-	quickConvert: bb.quickConvert
+	transform: bb.transform
 };
 
 var env = module.exports.environment;
@@ -27,7 +27,7 @@ function updateAllDatasets(cb){
 		_.partial(files.getFolders, ['data']),
 		getDataFilesProperties,
 		setDatasetsOnEnvironment
-	], cb || function(err, dSets){ console.log(err || 'all datasets loaded: ', dSets) });
+	], cb || function(err, dSets){ console.log(err || 'all datasets loaded: ', Object.keys(dSets)) });
 }
 
 function loadDataset(filename, cb){
