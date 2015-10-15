@@ -12,7 +12,7 @@ exports.transform = function (context, data, argument) {
 	}
 	
 	if( index < 0 ) {
-		index = data.length + index;
+		index = Math.min( data.length + index, data.length );
 	}
 	
   	return {

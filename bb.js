@@ -94,56 +94,66 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
           //schema for the given entity
           var schema = context.schema[entityName];
 
-          ignoreSchema = false;
+          if(!schema) return cb( new Error('schema not found for ' + entityName) );
 
           //validate according to schema
           transformedEntity.isValid = isValid( schema, transformedEntity );
 
-          if( !transformedEntity.isValid ){
-            transformedEntity.sourceData = object;
-            transformedEntity.schema = schema;
-          }
+          transformedEntity.sourceData = object;
+          transformedEntity.schema = schema;
 
           cb( null, transformedEntity );
         }
       }
 
       function entitiesCreated( err, entities ) {
-        var validEntities = [];
+        var invalidFound = false;
 
-        entities.forEach(function(entity){
-          if(entity.isValid){
-            delete entity.isValid;
-            validEntities.push(entity);
-            return;
-          }
+        entities.forEach(evaluateValidity);
 
+        if(!invalidFound){
+          allEntities.push.apply( allEntities, entities.map( stripExtraProps ) );
+        } else {
+          var revisionId = uuid.v4(),
+              transportContainer = {
+                revisionId: revisionId,
+                sourceData: entities[0].sourceData,
+                entities: entities.map( createTransportableEntity )
+              };
+
+          entitiesWithRevisionPending[revisionId] = transportContainer;
+
+          bucket.requestEdit( transportContainer );
+        }
+
+        return cb();
+
+        function evaluateValidity( entity ){
+          invalidFound = invalidFound || !entity.isValid;
           delete entity.isValid;
+        }
 
-          var sourceData = entity.sourceData,
-              schema = entity.schema;
-
+        function stripExtraProps( entity ){
           delete entity.sourceData;
           delete entity.schema;
 
-          var requiredKeys = Object.keys(entity),
-              revisionId = uuid.v4(),
-              transportableEntity = {
-                schema: schema,
-                requiredKeys: requiredKeys,
-                sourceData: sourceData,
-                currentValues: entity,
-                revisionId: revisionId
-              };
+          return entity;
+        }
 
-          entitiesWithRevisionPending[revisionId] = transportableEntity;
+        function createTransportableEntity( entity ){
+          var schema = entity.schema;
 
-          bucket.requestEdit( transportableEntity );
-        });
-
-        allEntities.push.apply(allEntities, validEntities);
-
-        cb( err );
+          delete entity.sourceData;
+          delete entity.schema;
+          
+          return {
+            schema: schema,
+            requiredKeys: Object.keys( entity ),
+            originalValues: entity,
+            currentValues: entity,
+            key: 'k' + uuid.v4()
+          };
+        }
       }
     }
   }
@@ -155,24 +165,46 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
   }
 
   function receiveEdit(editType, data, cb){
-    console.log('receiveEdit', editType, data, cb.toString());
-    
     if( editType === 'dismiss' ) {
       delete entitiesWithRevisionPending[data.revisionId];
     } else {
-      var item = entitiesWithRevisionPending[data.revisionId],
-          itemIsValid = isValid(data.values, item.schema);
+      var originalItems = entitiesWithRevisionPending[data.revisionId],
+          entities = data.entities,
+          entityKeys = Object.keys(data.entities),
+          anyItemsAreInvalid = entityKeys.map(checkIfEntityIsInvalid).reduce( keepFalse, true );
 
-      if(!itemIsValid) return;
+      if( anyItemsAreInvalid ) return;
 
-      allEntities.push(data.values);
+      allEntities.push( Object.keys( data.entities ).map( getEntity ) );
       delete entitiesWithRevisionPending[data.revisionId];
-    }
 
-    cb();
+    }
 
     if( !Object.keys( entitiesWithRevisionPending ).length ){
       collectedRevisionsCb();
+    }
+
+    return cb();
+
+    function checkIfEntityIsInvalid(entityKey){
+      var newEntity = entities[entityKey],
+          originalEntity;
+
+      originalItems.entities.forEach( getOriginalEntity );
+
+      return !isValid( entities[entityKey], originalEntity.schema );
+
+      function getOriginalEntity( currentEntity ) {
+        if(currentEntity.key === entityKey) originalEntity = currentEntity;
+      }
+    }
+
+    function keepFalse(previous, current){
+      return previous ? current : previous;
+    }
+
+    function getEntity( entityName ){
+      return entities[entityName];
     }
   }
 }
@@ -299,30 +331,38 @@ function transform(dataset, mapping, bucket){
   return transformFile(schemaPath, mappingPath, dataPath, bucket, finishCb);
 
   function finishCb( err, results ) {
+    console.log('finishCb');
     if(err) return done(err);
     
     console.log('yay, writing output');
 
     if(postProcessor){
-      return postProcessor(results, writeFiles);
+      return postProcessor(results, done);
     }
 
-    return writeFiles(null, [{
+    return done(null, { write: [{
       fileSuffix: dataset + '.json',
       contents: JSON.stringify(results, null, 2)
-    }]);
+    }] });
 
-    function writeFiles(err, files){
-      return async.parallel( files.map( createWriteFunction ), done );
+    function done(err, data){
+      if( !data || !data.write ) return bucket.complete(err);
+
+      writeFiles( data.write, _.partial( bucket.complete.bind( bucket ), _, data.write.map( makeOutputLink ) ) );
+    }
+
+    function writeFiles(files, cb){
+      return async.parallel( files.map( createWriteFunction ), cb );
 
       function createWriteFunction( fileContainer ) {
         return _.partial( fs.writeFile, './output/' + dataset + fileContainer.fileSuffix, fileContainer.contents );
       }
     }
 
-    function done(err){
-      console.log(err || 'output written');
+    function makeOutputLink( fileContainer ){
+      return '/output/' + dataset + fileContainer.fileSuffix;
     }
+
   }
 }
 

@@ -11,26 +11,138 @@ function documentReady(){
 	if( window.ZSchema ) validator = new ZSchema();
 }
 
+var boundDelegates = {};
+
 function initEventHandlers(){
 	return [{
-		entity: document.getElementById( 'mapping' ),
+		selector: '#mapping',
 		handlers: { change: setConvertLink }
 	}, {
-		entity: document.querySelector( '#pending-revisions ul' ),
+		selector: '#pending-revisions',
 		handlers: {
-			click: handleRevisionClick,
-			keyup: handleRevisionKeyDown,
 			DOMNodeInserted: requestAdded
+		},
+		selector: 'input.modify',
+		handlers: {
+			keyup: handleModifyKeyUp
 		}
-	}].forEach( bindHandlersForEntity );
+	}, {
+		selector: '.resultItem.valid, .resultItem.approved',
+		handlers: {
+			click: toggleResultStatus
+		}
+	}, {
+		selector: '.reject-all',
+		handlers: {
+			click: rejectAll
+		}
+	}, {
+		selector: '.approve-all',
+		handlers: {
+			click: approveAll
+		}
+	}].forEach( bindHandlersForElement );
 
-	function bindHandlersForEntity( declaration ){
-		if( declaration.entity ) Object.keys( declaration.handlers ).forEach( bindEvent );
+	function bindHandlersForElement( declaration ){
+		var element = document.querySelector( declaration.selector );
+		if( element ) Object.keys( declaration.handlers ).forEach( bindEvent );
+		else Object.keys( declaration.handlers ).forEach( bindDelegate );
 
-		function bindEvent( event ){
-			declaration.entity.addEventListener( event, declaration.handlers[event] );
+		function bindEvent( eventName ){
+			declaration.element.addEventListener( eventName, declaration.handlers[eventName] );
+		}
+
+		function bindDelegate( eventName ){
+			if( !boundDelegates[eventName] ) {
+				boundDelegates[eventName] = {};
+				document.addEventListener( eventName, createDelegateHandler( eventName ) );
+			}
+			boundDelegates[ eventName ][ declaration.selector] = declaration.handlers[eventName];
 		}
 	}
+
+	function createDelegateHandler( eventName ) {
+		return function delegateEvent(e){
+			var delegates = boundDelegates[eventName],
+					target = e.target,
+					result = true, didAnyCancel;
+
+			while( target && result ){
+				didAnyCancel = Object.keys( delegates ).map( evaluateHandler );
+				result = !~didAnyCancel.indexOf(false);
+
+				target = target.parentNode;
+			}
+
+			function evaluateHandler( selector ){
+				if( target.matches && target.matches( selector ) ) return delegates[selector].call( target, e );
+			}
+		}
+	}
+}
+
+function toggleResultStatus(e){
+	this.classList.toggle('valid');
+	this.classList.toggle('approved');
+
+	var invalidItems = document.querySelectorAll( '.resultItem.invalid' ),
+			validItems = document.querySelectorAll( '.resultItem.valid' );
+
+	if( !invalidItems.length && !validItems.length ){
+		sendRevisions( this.bbQuerySelectorParent('tr[data-revision-id]') );
+	}
+}
+
+function rejectAll(e){
+	sendRevisions( e.target.bbQuerySelectorParent('[data-revision-id]'), 'dismiss' );
+}
+
+function approveAll(e){
+	var invalidItems = document.querySelectorAll( '.resultItem.invalid' );
+
+	if( !invalidItems.length ){
+		sendRevisions( e.target.bbQuerySelectorParent('[data-revision-id]') );
+	}
+}
+
+function handleModifyKeyUp(e){
+	if( e.keyCode === 13 ) { //enter
+		return approveAll();
+	}
+
+	if(e.keyCode === 27 ) { //escape
+		return rejectAll();
+	}
+
+	var modifyItem = this.bbQuerySelectorParent( '.modifiableItem' ),
+			entity = revisingEntities[modifyItem.dataset.key],
+			resultItem = modifyItem && document.querySelector( '.resultItem[data-key=' + modifyItem.dataset.key + ']' ),
+			resultValueElement = resultItem.querySelector('td[data-key=' + this.dataset.key + ']' );
+
+
+	resultValueElement.innerHTML = this.value;
+
+	entity.currentValues[this.dataset.key] = this.value;
+
+	if( validator.validate( entity.currentValues, entity.schema ) ) {
+		resultItem.classList.add('valid');
+		resultItem.classList.remove('invalid');
+	} else {
+		resultItem.classList.add('invalid');
+		resultItem.classList.remove('valid');
+		resultItem.classList.remove('approved');
+	}
+}
+
+function requestAdded(e){
+	var firstEmptyElement;
+	e.target.querySelectorAll && Array.prototype.forEach.call(e.target.querySelectorAll('input'), checkIfIsFirstEmptyInput);
+
+	function checkIfIsFirstEmptyInput(element){
+		if( !firstEmptyElement && !element.value ) firstEmptyElement = element;
+	}
+
+	if(firstEmptyElement) firstEmptyElement.focus();
 }
 
 function setConvertLink(){
@@ -46,13 +158,15 @@ function initConnection(){
 
 	var keyContainer = document.getElementById('socketkey');
 	
-	socketKey = keyContainer && keyContainer.dataset.socketkey
+	socketKey = keyContainer && keyContainer.dataset.socketkey;
 	
 	socket.emit('socketkey', socketKey);
 
 	socket.on('requestedit', createRevisionJob);
 
 	socket.on('remove', removeRevision);
+
+	socket.on('complete', handleComplete);
 }
 
 var maxRevisionsToShow = 1,
@@ -60,13 +174,11 @@ var maxRevisionsToShow = 1,
 		revisionItems = {};
 
 function createRevisionJob(data){
-	var list = document.querySelector('#pending-revisions ul'),
-			item = document.createElement('ul');
+	var tbody = document.querySelector('#pending-revisions tbody');
 
-	if(list.children.length < maxRevisionsToShow) {
+	if(tbody.children.length < maxRevisionsToShow) {
 		var revision = new Revision(data);
-		item.appendChild(revision.element);
-		list.appendChild(item);
+		tbody.appendChild(revision.element);
 	} else {
 		revisionsBuffer.push(data);
 		setSummary();
@@ -79,14 +191,48 @@ function setSummary(){
 	summary.innerHTML = 'and ' + revisionsBuffer.length + ' more';
 }
 
-function Revision(data){
-	var element = this.element = document.createElement('div'),
-			sourceTable = document.createElement('table');
+var revisingEntities = {};
 
-	element.className = 'rectifyform';
+function Revision(data){
+	var element = this.element = document.createElement('tr'),
+			sourceTableCell = document.createElement('td'),
+			modifyTableCell = document.createElement('td'),
+			resultTableCell = document.createElement('td'),
+			sourceTable = document.createElement('table'),
+			modifyItems = document.createElement('ul'),
+			resultItems = document.createElement('ul'),
+			rejectAllButton = document.createElement('button'),
+			approveAllButton = document.createElement('button');
+
+	sourceTableCell.appendChild(sourceTable);
+	element.appendChild(sourceTableCell);
+	element.appendChild(modifyTableCell);
+	element.appendChild(resultTableCell);
+
+	rejectAllButton.className = 'reject-all';
+	approveAllButton.className = 'approve-all';
+	rejectAllButton.innerHTML = 'Reject all';
+	approveAllButton.innerHTML = 'Approve all';
+
+	modifyTableCell.appendChild(modifyItems);
+
+	resultTableCell.appendChild(rejectAllButton);
+
+	resultTableCell.appendChild(resultItems);
+
+	resultTableCell.appendChild( approveAllButton );
+
 	element.dataset.revisionId = data.revisionId;
 	
-	Object.keys(data.sourceData).forEach(function(key){
+	Object.keys( data.sourceData ).forEach( createSourceRow );
+
+	data.entities.forEach( createModifyFieldsAndResultForEntity );
+
+	revisionItems[data.revisionId] = data;
+
+	return;
+
+	function createSourceRow( key ){
 		var value = data.sourceData[key],
 				tr = document.createElement('tr'),
 				td1 = document.createElement('td'),
@@ -95,121 +241,173 @@ function Revision(data){
 		td1.innerHTML = key;
 		td2.innerHTML = value;
 
-		tr.appendChild(td1);
-		tr.appendChild(td2);
+		tr.appendChild( td1 );
+		tr.appendChild( td2 );
 
-		sourceTable.appendChild(tr);
-	});
-	
-	element.appendChild(sourceTable);
+		sourceTable.appendChild( tr );
+	}
 
-	data.requiredKeys.forEach(function(key){
-		var label = document.createElement('label'),
-				input = document.createElement('input'),
-				value = data.currentValues[key];
-		
-		label.innerHTML = key;
-		label.appendChild(input);
+	function createModifyFieldsAndResultForEntity( entity, i ){
+		var schema = entity.schema,
+				key = entity.key,
+				modifyItem = document.createElement('li'),
+				resultItem = document.createElement('ul'),
+				modifyTable = document.createElement('table'),
+				resultTable = document.createElement('table');
 
-		input.dataset.key = key;
-		input.className = 'entity-field';
+		modifyItem.appendChild(modifyTable);
+		resultItem.appendChild(resultTable);
 
-		if(value) input.value = value;
+		modifyItem.className = 'modifiableItem';
+		resultItem.className = 'resultItem';
+		modifyItem.dataset.key = resultItem.dataset.key = key;
 
-		element.appendChild(label);
-	});
+		if( validator.validate(entity.originalValues, entity.schema ) ) resultItem.classList.add( 'valid' );
+		else resultItem.classList.add( 'invalid' );
 
-	var rectifyButton = document.createElement('button');
-	rectifyButton.innerHTML = 'rectify';
+		modifyItems.appendChild(modifyItem);
+		resultItems.appendChild(resultItem);
 
-	element.appendChild(rectifyButton);
+		revisingEntities[key] = entity;
 
-	var dismissButton = document.createElement('button');
-	dismissButton.className = 'dismiss';
-	dismissButton.innerHTML = 'dismiss';
+		entity.requiredKeys.forEach( createKeyRow );
 
-	element.appendChild(dismissButton);
+		return;
 
-	revisionItems[data.revisionId] = data;
-}
+		function createKeyRow( key ) {
+			var value = entity.originalValues[key],
+					modifyTr = document.createElement('tr'),
+					resultTr = document.createElement('tr'),
+					modifyLabelTd = document.createElement('td'),
+					modifyInputTd = document.createElement('td'),
+					resultLabelTd = document.createElement('td'),
+					resultValueTd = document.createElement('td'),
+					label = document.createElement('label'),
+					input = document.createElement('input');
 
+			modifyTr.appendChild( modifyLabelTd );
+			modifyTr.appendChild( modifyInputTd );
 
+			resultTr.appendChild( resultLabelTd );
+			resultTr.appendChild( resultValueTd );
 
-function handleRevisionClick(e){
-	if(e.target && e.target.tagName.toLowerCase() === 'button'){
-		sendRevision( e.target.parentNode, e.target.className );
+			modifyLabelTd.appendChild(label);
+			modifyInputTd.appendChild(input);
+
+			label.innerHTML = key;
+			if(value) input.value = value;
+
+			resultLabelTd.innerHTML = key;
+			if(value) resultValueTd.innerHTML = value;
+
+			modifyTable.appendChild(modifyTr);
+			resultTable.appendChild(resultTr);
+
+			var isRequired = ~schema.required.indexOf(key),
+					isHidden = schema.hidden && ~schema.hidden.indexOf( key ),
+					isFixed = schema.fixed && ~schema.fixed.indexOf( key );
+
+			if(isRequired){
+				label.innerHTML += '*';
+			}
+			if(isHidden){
+				modifyTr.classList.add('hidden');
+				resultTr.classList.add('hidden');
+			}
+			if(isFixed){
+				input.disabled = 'disabled';
+				modifyTr.classList.add('disabled');
+				resultTr.classList.add('disabled');
+			}
+
+			input.classList.add( 'modify' );
+			input.dataset.key = key;
+			resultValueTd.dataset.key = key;
+		}
 	}
 }
 
-function handleRevisionKeyDown(e){
-	if(e.target && e.target.tagName.toLowerCase() === 'input' ) {
-		if( e.keyCode === 13 ) sendRevision( e.target.parentNode.parentNode );
-		if( e.keyCode === 27 ) sendRevision( e.target.parentNode.parentNode, 'dismiss' );
-	}
-}
-
-function sendRevision(revisionElement, method){
+function sendRevisions(revisionElement, method){
 	var revisionId = revisionElement.dataset.revisionId,
-			allChildren = revisionElement.children,
-			newData = {};
+			revisionSet = revisionItems[revisionId];
 
 	if(method === 'dismiss'){
 		return socket.emit('dismiss', { socketKey: socketKey, revisionId: revisionId });
 	}
 
-	Array.prototype.forEach.call(allChildren, function(child){
-		if(child.tagName.toLowerCase() === 'label'){
-			var input = child.children[0],
-					key = input.dataset.key,
-					value = input.value;
-			if(value) newData[key] = value;
-		}
-	});
+	var results = {};
 
-	var revisionItem = revisionItems[revisionId];
-
-	console.log('isValid', validator.validate(newData, revisionItem.schema));
+	revisionSet.entities.forEach( addResult );
 
 	socket.emit('rectify', {
 		socketKey: socketKey,
 		revisionId: revisionId,
-		values: newData
+		entities: results
 	});
+
+	function addResult( entity ) {
+		results[entity.key] = entity.currentValues;
+	}
 }
 
 function removeRevision(revisionId){
-	var element = document.querySelector('div[data-revision-id="' + revisionId + '"]');
+
+	var element = document.querySelector('tr[data-revision-id="' + revisionId + '"]'),
+			tbody = element.bbQuerySelectorParent('tbody');
 
 	if(!element) {
 		console.log('element not found: ' + revisionId);
 		return;
 	}
 
-	var li = element.parentNode,
-			ul = li.parentNode;
-
-	li.remove();
+	element.remove();
 
 	var nextRevisionData = revisionsBuffer.shift();
 
 	if(!nextRevisionData) return; //todo make nicer message
 	
-	var nextRevision = new Revision(nextRevisionData),
-			item = document.createElement('ul');
+	var nextRevision = new Revision(nextRevisionData);
 
-	item.appendChild(nextRevision.element);
+	tbody.appendChild(nextRevision.element);
 
-	ul.appendChild(item);
 	setSummary();
 }
 
-function requestAdded(e){
-	var firstEmptyElement;
-	Array.prototype.forEach.call(e.target.querySelectorAll('input'), checkIfIsFirstEmptyInput);
+function handleComplete(results){
+	var summary = document.getElementById('pending-revisions-summary');
+	if(results.error) {
+		summary.innerHTML = results.error;
+		return;
+	}
+	
+	var hrefs = results.files.map( createFileLink ),
+			lis = hrefs.map(embedInLi);
 
-	function checkIfIsFirstEmptyInput(element){
-		if( !firstEmptyElement && !element.value ) firstEmptyElement = element;
+	var table = document.querySelector('#pending-revisions > table'),
+			parentNode = table.parentNode;
+
+	parentNode.innerHTML = 'Transformation complete';
+
+	var ul = document.createElement('ul');
+	lis.forEach( ul.appendChild.bind(ul) );
+	
+	parentNode.appendChild(ul);
+
+	return;
+
+	function createFileLink(file){
+		var a = document.createElement('a'),
+				filename = file.split('/').pop();
+
+		a.href = file;
+		a.innerHTML = file;
+		a.download = filename;
+		return a;
 	}
 
-	firstEmptyElement.focus();
+	function embedInLi(element){
+		var li = document.createElement('li');
+		li.appendChild(element);
+		return li;
+	}
 }

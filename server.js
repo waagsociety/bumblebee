@@ -1,4 +1,5 @@
 var fs = require('fs'),
+    path = require('path'),
     express = require('express'),
     http = require('http'),
     path = require('path'),
@@ -76,28 +77,9 @@ module.exports = {
 
     app.alias('/datasets', '/');
     app.getView('/datasets/:filename', 'dataset');
-    app.get('/datasets/:filename/transform/:mapping', function(req, res, next){
-      var dataset = req.params.filename,
-        mapping = req.params.mapping;
+    app.get('/datasets/:filename/transform/:mapping', transformFile );
 
-      if(!env.datasets[req.params.filename] || env.mappings.indexOf(req.params.mapping) === -1) return next();
-      
-      var socketKey = uuid.v4();
-
-      var bucket = editbuckets.getBucket(socketKey);
-      console.log(bucket);
-
-      res.render('transform', {
-        socketKey: socketKey
-      });
-
-      env.transform(dataset, mapping, bucket);
-      // env.quickConvert(dataset, mapping, function(err, results){
-      //  if(err) return res.status(500).send(err);
-
-      //  res.json(results);
-      // });
-    });
+    app.get('/output/:filename', sendOutputFile );
 
     var server = app.listen(options.port || 3000, function(){
       var address = server.address();
@@ -119,6 +101,10 @@ module.exports = {
 
         bucket.onAddToQueue(function(data){
           socket.emit('requestedit', data);
+        });
+
+        bucket.onComplete(function(err, files){
+          socket.emit( 'complete', { error: err, files: files } );
         });
       });
 
@@ -170,6 +156,49 @@ module.exports = {
 
       //req.busboy.on('field', console.log.bind(console, 'field'))
       req.pipe(req.busboy);
+    }
+
+    function transformFile(req, res, next){
+      var dataset = req.params.filename,
+        mapping = req.params.mapping;
+
+      if(!env.datasets[req.params.filename] || env.mappings.indexOf(req.params.mapping) === -1) return next();
+      
+      var socketKey = uuid.v4();
+
+      var bucket = editbuckets.getBucket(socketKey);
+      console.log(bucket);
+
+      res.render('transform', {
+        socketKey: socketKey
+      });
+
+      env.transform(dataset, mapping, bucket);
+      // env.quickConvert(dataset, mapping, function(err, results){
+      //  if(err) return res.status(500).send(err);
+
+      //  res.json(results);
+      // });
+    }
+
+    function sendOutputFile(req, res, next){
+      var filename = 'output/' + req.params.filename;
+
+      return fs.exists(filename, function( exists ){
+        console.log(filename, cwd);
+        if(!exists) return next('not found');
+
+        return fs.stat(filename, function(err, stat){
+          if(err) return next(err);
+
+          res.writeHead(200, {
+            'Content-Type': 'text/plain',
+            'Content-Length': stat.size
+          });
+
+          fs.createReadStream(filename).pipe(res);
+        });
+      });
     }
   }
 };

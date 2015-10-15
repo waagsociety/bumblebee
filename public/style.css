@@ -1,6 +1,7 @@
 body{
-	background-color: #DDFFCC;
+	background-color: transparent;
 	margin: 0 1em;
+	font-family: sans-serif;
 }
 
 #mainnav{
@@ -27,13 +28,116 @@ body{
 
 h1{
 	background-color: #22CC00;
-	font-family: sans-serif;
 	color: white;
 	padding: 5px;
 }
 
 
 
-#quick-convert-output ul{
+#quick-convert-output ul {
 	margin-top: 10px;
+}
+
+#pendng-revisions > table {
+	width: 100%;
+}
+
+#pending-revisions > table > thead {
+	font-weight: 900;
+	text-align: center;
+	text-transform: uppercase;
+}
+
+#pending-revisions > table > thead > tr > td:nth-child(1), #pending-revisions > table > tbody > tr > td:nth-child(1) {
+	width: 33%;
+}
+
+#pending-revisions ul li{
+	list-style-type: none;
+	padding-left: 0;
+}
+
+.modifiableItem, .resultItem {
+	margin: 1em;
+	border-radius: 3px;
+	border-bottom: 2px solid #333;
+	border-right: 1px solid #333;
+}
+
+.modifiableItem {
+	background: #DDD;
+}
+
+.modifiableItem table {
+	width: 100%;
+}
+
+.modifiableItem td:nth-child(2) {
+	position: relative;
+}
+
+.modifiableItem td input {
+	width: 100%;
+}
+
+.resultItem {
+	user-select: none;
+	padding: 0;
+}
+
+.resultItem.invalid{
+	background-color: #E82032;
+}
+
+.resultItem.valid{
+	background-color: #FFE108;
+}
+.resultItem.valid:hover {
+	background-color: #9DFF00
+}
+
+.resultItem.approved:hover {
+	background-color: #C3E82F
+}
+
+.resultItem.approved {
+	background-color: #2FE882;
+}
+
+.resultItem.valid, .resultItem.approved {
+	cursor: pointer;
+}
+
+.reject-all, .approve-all{
+	width: 100%;
+	height: 3em;
+	border-top: none;
+	border-left: none;
+	border-bottom: 2px solid #333;
+	border-right: 1px solid #333;
+	cursor: pointer;
+}
+
+.reject-all {
+	background-color: #DC2C04;
+}
+
+.reject-all:hover{
+	background-color: #888;
+}
+
+.approve-all {
+	background-color: #94FFC9;
+}
+
+.approve-all:hover{
+	background-color: #DDD;
+}
+
+#socketkey {
+	display: none;
+}
+
+.disabled{
+	opacity: 0.5;
 }

@@ -11,5 +11,12 @@ block content
 		h2= 'transforming ' + req.params.filename + ' with ' + mapping
 		span#socketkey(data-socketkey=socketKey)= socketKey
 		section#pending-revisions
-			ul
+			table
+				thead
+					tr
+						td Source
+						td Modify
+						td Result
+				tbody
+				tfoot
 			span#pending-revisions-summary
