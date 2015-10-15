@@ -11,45 +11,26 @@ function documentReady(){
 	if( window.ZSchema ) validator = new ZSchema();
 }
 
-var boundDelegates = {};
-
+var boundDelegates = {},
+		eventHandlers = {
+			'#mapping': { change: setConvertLink },
+			'#pending-revisions': { DOMNodeInserted: requestAdded },
+			'input.modify': { keyup: handleModifyKeyUp },
+			'.resultItem.valid, .resultItem.approved': { click: toggleResultStatus },
+			'.reject-all': { click: rejectAll },
+			'.approve-all': { click: approveAll }
+		};
 function initEventHandlers(){
-	return [{
-		selector: '#mapping',
-		handlers: { change: setConvertLink }
-	}, {
-		selector: '#pending-revisions',
-		handlers: {
-			DOMNodeInserted: requestAdded
-		},
-		selector: 'input.modify',
-		handlers: {
-			keyup: handleModifyKeyUp
-		}
-	}, {
-		selector: '.resultItem.valid, .resultItem.approved',
-		handlers: {
-			click: toggleResultStatus
-		}
-	}, {
-		selector: '.reject-all',
-		handlers: {
-			click: rejectAll
-		}
-	}, {
-		selector: '.approve-all',
-		handlers: {
-			click: approveAll
-		}
-	}].forEach( bindHandlersForElement );
+	Object.keys(eventHandlers).forEach(bindHandlersForElement);
 
-	function bindHandlersForElement( declaration ){
-		var element = document.querySelector( declaration.selector );
-		if( element ) Object.keys( declaration.handlers ).forEach( bindEvent );
-		else Object.keys( declaration.handlers ).forEach( bindDelegate );
+	function bindHandlersForElement( selector ){
+		var handlers = eventHandlers[selector],
+				element = document.querySelector( selector );
+		if( element ) Object.keys( handlers ).forEach( bindEvent );
+		else Object.keys( handlers ).forEach( bindDelegate );
 
 		function bindEvent( eventName ){
-			declaration.element.addEventListener( eventName, declaration.handlers[eventName] );
+			element.addEventListener( eventName, handlers[eventName] );
 		}
 
 		function bindDelegate( eventName ){
@@ -57,7 +38,7 @@ function initEventHandlers(){
 				boundDelegates[eventName] = {};
 				document.addEventListener( eventName, createDelegateHandler( eventName ) );
 			}
-			boundDelegates[ eventName ][ declaration.selector] = declaration.handlers[eventName];
+			boundDelegates[ eventName ][ selector] = handlers[eventName];
 		}
 	}
 
@@ -118,7 +99,6 @@ function handleModifyKeyUp(e){
 			entity = revisingEntities[modifyItem.dataset.key],
 			resultItem = modifyItem && document.querySelector( '.resultItem[data-key=' + modifyItem.dataset.key + ']' ),
 			resultValueElement = resultItem.querySelector('td[data-key=' + this.dataset.key + ']' );
-
 
 	resultValueElement.innerHTML = this.value;
 
@@ -307,7 +287,7 @@ function Revision(data){
 					isHidden = schema.hidden && ~schema.hidden.indexOf( key ),
 					isFixed = schema.fixed && ~schema.fixed.indexOf( key );
 
-			if(isRequired){
+			if(isRequired && !isFixed){
 				label.innerHTML += '*';
 			}
 			if(isHidden){
@@ -380,7 +360,7 @@ function handleComplete(results){
 		return;
 	}
 	
-	var hrefs = results.files.map( createFileLink ),
+	var hrefs = results.files.map( createFileLinks ),
 			lis = hrefs.map(embedInLi);
 
 	var table = document.querySelector('#pending-revisions > table'),
@@ -395,14 +375,23 @@ function handleComplete(results){
 
 	return;
 
-	function createFileLink(file){
-		var a = document.createElement('a'),
+	function createFileLinks(file){
+		var span = document.createElement('span'),
+				aDownload = document.createElement('a'),
+				aView = document.createElement('a'),
 				filename = file.split('/').pop();
 
-		a.href = file;
-		a.innerHTML = file;
-		a.download = filename;
-		return a;
+		span.innerHTML = filename;
+
+		aDownload.href = aView.href = file;
+		aDownload.innerHTML = 'Download';
+		aDownload.download = filename;
+		aView.innerHTML = 'View';
+		aView.target = '_blank';
+
+		span.appendChild(aDownload);
+		span.appendChild(aView);
+		return span;
 	}
 
 	function embedInLi(element){
