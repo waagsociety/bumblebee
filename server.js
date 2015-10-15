@@ -94,28 +94,41 @@ module.exports = {
     io.on('connection', function(socket){
       console.log('a user connected');
 
-      socket.on('error', console.error.bind(console));
+      socket.on('error', console.error.bind(console, 'socket error'));
 
       socket.on('socketkey', function(socketKey){
         console.log('transformkey: ', socketKey);
 
-        var bucket = editbuckets.getBucket(socketKey);
+        var bucket = editbuckets.getBucket( socketKey );
 
-        bucket.onAddToQueue(function(data){
-          socket.emit('requestedit', data);
-        });
+        bucket.addSubscriber(sendRequestEdit, socket.id);
 
         bucket.onComplete(function(err, files){
           socket.emit( 'complete', { error: err, files: files } );
+        }, socket.id);
+
+        socket.on('disconnect', function(){
+          bucket.clearSubscriptions(socket.id);
         });
       });
 
+      function sendRequestEdit(data){
+        socket.emit('requestedit', data);
+      }
+
+      function getNextRevision(err, bucket, data){
+        socket.emit( 'remove', data.revisionId );
+        bucket.addSubscriber( sendRequestEdit, socket.id );
+      }
+
       socket.on('dismiss', function(data){
-        editbuckets.getBucket(data.socketKey).receiveEdit('dismiss', data, socket.emit.bind( socket, 'remove', data.revisionId ) );
+        var bucket = editbuckets.getBucket(data.socketKey);
+        bucket.receiveEdit('dismiss', data, _.partial( getNextRevision, _, bucket, data) );
       });
 
       socket.on('rectify', function(data){
-        editbuckets.getBucket(data.socketKey).receiveEdit('rectify', data, socket.emit.bind( socket, 'remove', data.revisionId ) );
+        var bucket = editbuckets.getBucket(data.socketKey);
+        bucket.receiveEdit('rectify', data, _.partial( getNextRevision, _, bucket, data) );
       });
     });
 
@@ -166,7 +179,7 @@ module.exports = {
 
       if(!env.datasets[req.params.filename] || env.mappings.indexOf(req.params.mapping) === -1) return next();
       
-      var socketKey = req.params.filaname + '-' + req.params.mapping;
+      var socketKey = req.params.filename + '-' + req.params.mapping;
 
       var bucket = editbuckets.getBucket(socketKey);
 
@@ -177,6 +190,8 @@ module.exports = {
       if( ~transformationsInProgress.indexOf(socketKey ) ){
         return; //already transforming
       }
+
+      transformationsInProgress.push( socketKey );
 
       env.transform(dataset, mapping, bucket);
     }
