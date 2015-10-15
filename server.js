@@ -12,6 +12,8 @@ var fs = require('fs'),
 
 var cwd = process.cwd();
 
+var transformationsInProgress = [];
+
 //var applyRoutes = require('./hoprouter.js').applyRoutes;
 
 module.exports = {
@@ -164,21 +166,19 @@ module.exports = {
 
       if(!env.datasets[req.params.filename] || env.mappings.indexOf(req.params.mapping) === -1) return next();
       
-      var socketKey = uuid.v4();
+      var socketKey = req.params.filaname + '-' + req.params.mapping;
 
       var bucket = editbuckets.getBucket(socketKey);
-      console.log(bucket);
 
       res.render('transform', {
         socketKey: socketKey
       });
 
-      env.transform(dataset, mapping, bucket);
-      // env.quickConvert(dataset, mapping, function(err, results){
-      //  if(err) return res.status(500).send(err);
+      if( ~transformationsInProgress.indexOf(socketKey ) ){
+        return; //already transforming
+      }
 
-      //  res.json(results);
-      // });
+      env.transform(dataset, mapping, bucket);
     }
 
     function sendOutputFile(req, res, next){
