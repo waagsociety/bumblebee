@@ -8,3 +8,9 @@ block layout
 		include header
 		#content
 			block content
+	block footer
+		footer
+			p
+				!= (env.name || "Bumblebee") +", online since " + env.startTime.toString().substring(0,21) + ' (powered by '
+				a(href="https://github.com/waagsociety/bumblebee") bumblebee
+				!= ')'

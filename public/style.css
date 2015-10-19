@@ -1,38 +1,184 @@
+/* Reset */
+
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed,
+figure, figcaption, footer, header, hgroup,
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video, button, input, textarea, select{
+	margin: 0;
+	padding: 0;
+	border: 0;
+	font: inherit;
+	vertical-align: baseline;
+	outline: 0;
+	border-style: solid;
+	border-width: 0;
+	box-sizing: border-box;
+	position: relative;
+}
+
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure,
+footer, header, hgroup, menu, nav, section {
+	display: block;
+}
+ol, ul{ 
+	list-style: none;
+}
+
+blockquote, q{
+	quotes: none;
+}
+
+blockquote:before, blockquote:after,
+q:before, q:after{
+	content: '';
+	content: none;
+}
+
+table{
+	border-collapse: collapse;
+	border-spacing: 0;
+}
+
+div, section, nav{
+	position: relative;
+}
+
+
+/* Typography */
+
+html {
+    font-size: 100%
+}
+-webkit-font-smoothing antialiased {
+    text-rendering: optimizeLegibility;
+    text-rendering: geometricPrecision;
+    font-smooth: always;
+    font-smoothing: antialiased
+}
+body {
+  background-color: #f2f2f2;
+  font-family: 'Source Sans Pro', serif;
+  font-weight: 400;
+    font-size: 1em;
+    color: #333
+}
+
+h1, .alpha,
+h2, .beta,
+h3, .gamma,
+h4, .delta,
+h5, .epsilon,
+h6, .zeta {
+  margin: 0;
+  font-family: 'Source Sans Pro', serif;
+  font-weight: 600; }
+
+strong {
+  font-weight: bold; }
+
+h1, .alpha {
+  font-size: 2.625em;
+  line-height: 1.0476190476190477;
+}
+
+h2, .beta {
+  font-size: 1.96875em;
+  line-height: 1.3968253968253967;
+}
+
+h3, .gamma {
+  font-size: 1.3125em;
+  margin: 0 0 1.5714285714285714em;
+}
+
+h4, .delta {
+  font-size: 1.1484375em;
+  line-height: 1.1972789115646258;
+}
+
+h5, .epsilon {
+  font-size: 0.984375em;
+  line-height: 1.3968253968253967;
+}
+
+h6, .zeta {
+  font-size: 0.875em;
+  line-height: 1.5714285714285714;
+}
+
+p,
+blockquote {
+  font-size: 1.3125em;
+  line-height: 1.5714285714285714;
+  -webkit-hyphens: auto;
+  -moz-hyphens: auto;
+  -ms-hyphens: auto;
+  hyphens: auto; }
+
+dd,
+dt,
+li {
+  line-height: 1.5714285714285714;
+  margin: 0; }
+
+a {
+  text-decoration: none;
+  opacity: 1;
+  color: #7CA4BA;
+  font-weight: bold;
+  -webkit-transition: opacity 0.3s ease-in-out;
+          transition: opacity 0.3s ease-in-out;
+  font-family: 'Source Sans Pro', serif; }
+
+
+
 body{
-	background-color: transparent;
-	margin: 0 1em;
+	background-color: #fff;
 	font-family: sans-serif;
 }
 
+
+/* Layout */
+
+.introbar{
+  padding: 2% 4%;
+  background: #264653;
+  color: white;
+}
+.introbar a{
+  color: #B2DFDB;
+}
+footer{
+	padding: 2% 4%;
+	background: #F5EDF0;
+	font-size: .875em;
+}
+
 #mainnav{
-	background-color: gray;
-	padding: 10px;
+  background-color: #F5EDF0;
+  padding: 1em 4% 0;
 }
-
 #mainnav a{
-	background-color: yellow;
-	padding: 5px;
-	margin: 5px;
+  background-color: #2A9D8F;
+  color: #fff;
+  padding: .3em .5em .5em;
+  line-height: 2.2em;
 	text-decoration: none;
-	color: black;
-	font-weight: bold;
+  margin: 0 1em 0 0;
 }
-
-#mainnav a:first-child{
-	margin-left: 0;
+#content{
+  padding: 4%;
 }
-
-#mainnav a:hover{
-	background-color: white;
-}
-
-h1{
-	background-color: #22CC00;
-	color: white;
-	padding: 5px;
-}
-
-
 
 #quick-convert-output ul {
 	margin-top: 10px;
@@ -56,8 +202,12 @@ h1{
 	list-style-type: none;
 	padding-left: 0;
 }
-
 .modifiableItem, .resultItem {
+	margin: 2em 0;
+	border: 1px solid white;
+}
+
+/*.modifiableItem, .resultItem {
 	margin: 1em;
 	border-radius: 3px;
 	border-bottom: 2px solid #333;
@@ -78,7 +228,7 @@ h1{
 
 .modifiableItem td input {
 	width: 100%;
-}
+}*/
 
 .resultItem {
 	user-select: none;
@@ -108,7 +258,15 @@ h1{
 	cursor: pointer;
 }
 
-.reject-all, .approve-all{
+button{
+	padding: .5em 1em;
+	background-color: #2A9D8F;
+	color: white;
+	font-weight: bold;
+	cursor: pointer;
+}
+
+/*.reject-all, .approve-all{
 	width: 100%;
 	height: 3em;
 	border-top: none;
@@ -132,7 +290,7 @@ h1{
 
 .approve-all:hover{
 	background-color: #DDD;
-}
+}*/
 
 #socketkey {
 	display: none;

@@ -8,7 +8,8 @@ block content
 	if !dataset
 		h1.error= "Dataset " + filename + " not found :("
 	else
-		h2= 'transforming ' + req.params.filename + ' with ' + mapping
+		header
+			h2= 'transforming ' + req.params.filename + ' with ' + mapping
 		span#socketkey(data-socketkey=socketKey)= socketKey
 		section#pending-revisions
 			table
