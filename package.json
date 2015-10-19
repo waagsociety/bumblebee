@@ -8,6 +8,7 @@
     "async-maphash": "https://github.com/w0ps/async-maphash",
     "body-parser": "^1.13.2",
     "byline": ">=4.2.1",
+    "connect-busboy": "0.0.2",
     "csv": ">=0.4.5",
     "deasync": ">=0.1.0",
     "express": "^4.13.3",
