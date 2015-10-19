@@ -5,6 +5,12 @@ html
     script(src="/polyfills.js")
     script(src="/ajaxRequest.js")
     block header
+    if env.additionalStylesheets
+      each sheet in env.additionalStylesheets
+        link(href='/' + sheet, rel='stylesheet')
+    if env.additionalJavascripts
+      each script in env.additionalJavascripts
+        script(src=script)
   body
     block layout
     block footer

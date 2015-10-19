@@ -68,7 +68,14 @@ module.exports = {
 
     //app.use( require( 'less-middleware' )( __dirname + '/public' ) );
     app.use( express.static( path.join( __dirname, 'public' ) ) );
-    //app.use( gzippo.staticGzip( path.join( __dirname, 'public' ), { contentTypeMatch: /text|javascript|json|svg|ttf|otf|css/ } ) );
+
+    if(fs.existsSync(cwd + '/public')){
+      app.use( express.static( path.join( cwd, 'public' ) ) );
+      var files = fs.readdirSync(cwd + '/public');
+
+      env.additionalStylesheets = files.filter(function(filename){ return filename.indexOf('.css') > -1; });
+      env.additionJavascripts = files.filter(function(filename){ return filename.indexOf('.js') > -1; });
+    }
 
     app.use( setLocals );
     
