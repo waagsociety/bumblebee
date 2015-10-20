@@ -20,8 +20,9 @@ var boundDelegates = {},
 			'.reject-all': { click: rejectAll },
 			'.approve-all': { click: approveAll }
 		};
+
 function initEventHandlers(){
-	Object.keys(eventHandlers).forEach(bindHandlersForElement);
+	Object.keys( eventHandlers ).forEach( bindHandlersForElement );
 
 	function bindHandlersForElement( selector ){
 		var handlers = eventHandlers[selector],
@@ -255,8 +256,12 @@ function Revision(data){
 		return;
 
 		function createKeyRow( key ) {
-			var value = entity.originalValues[key],
-					modifyTr = document.createElement('tr'),
+			var value = entity.originalValues[key];
+
+			if(typeof value === Object && !( value instanceof Date ) ){
+				return; //todo correctly make sub properties editable
+			}
+			var modifyTr = document.createElement('tr'),
 					resultTr = document.createElement('tr'),
 					modifyLabelTd = document.createElement('td'),
 					modifyInputTd = document.createElement('td'),

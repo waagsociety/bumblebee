@@ -1,13 +1,6 @@
-var ResultCode = require('../resultCode');
-
 //format a date value as utc
 exports.transform = function (context, data) {
-	var string;
+	if( data && data instanceof Date ) return data.toISOString();
 
-	if(data && data instanceof Date) string = data.toISOString();
-
-	return {
-		value: string,
-		resultcode: ResultCode.OK
-	};
+	return new Error( 'format_utc: data is not a Date, data: ' + JSON.stringify( data ) );
 };

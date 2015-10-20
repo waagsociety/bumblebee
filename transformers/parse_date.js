@@ -1,13 +1,8 @@
-var ResultCode = require('../resultCode');
-
 //parse a date value 
 exports.transform = function (context, data) {
 	var date = new Date(data);
 	if(date.toString() === 'Invalid Date'){
-		console.log(data, date.toString());
+		return new Error('parse_date: could not parse as date, data: ' + JSON.stringify( data ) );
 	}
-	return {
-		value: date,
-		resultcode: ResultCode.OK
-	};
+	return date;
 };

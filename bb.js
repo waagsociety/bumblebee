@@ -94,7 +94,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
           //schema for the given entity
           var schema = context.schema[entityName];
 
-          if(!schema) return cb( new Error('schema not found for ' + entityName) );
+          if(!schema) return cb( new Error( 'schema not found for ' + entityName ) );
 
           //validate according to schema
           transformedEntity.isValid = isValid( schema, transformedEntity );
@@ -141,10 +141,13 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
         }
 
         function createTransportableEntity( entity ){
-          var schema = entity.schema;
+          var schema = entity.schema,
+              errors = {};
 
           delete entity.sourceData;
           delete entity.schema;
+
+          Object.keys( entity ).forEach( getErrorAndPruneIt );
           
           return {
             schema: schema,
@@ -153,6 +156,13 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
             currentValues: entity,
             key: 'k' + uuid.v4()
           };
+
+          function getErrorAndPruneIt( key ){
+            if( entity[key] instanceof Error ){
+              errors[key] = entity[key];
+              entity[key] = '';
+            }
+          }
         }
       }
     }
@@ -216,29 +226,40 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 //the first is used for validation
 //the second contains resultcodes for each field
 function transformEntity( entityName, entity, context, cb ) {
+
   // map the fields to their transformed counterparts
   return async.map( Object.keys( entity ), transformEntityField, fieldsTransformed );
 
-  function transformEntityField( fieldName, cb ) {
-    transformField( fieldName, entity[fieldName], context, cb );
+  function transformEntityField( fieldName, cb, container, parentFieldName ) {
+    if( fieldName === 'subProperty' ) return cb();
+
+    var field = entity[fieldName] || container[fieldName];
+    if(!field.subProperty) return transformField( fieldName, field, context, cb );
+    else return async.map( Object.keys( field ), _.partial( transformEntityField, _, _, field, fieldName ), subPropertiesCollectedCb );
+
+    function subPropertiesCollectedCb(err, results){ //weird.. gets called with [err, [err, results...]]. so send this way
+      results.shift(); //get rid of err on results;
+
+      var fieldContainer = {},
+          reduced = results.reduce( normalize, {} );
+
+      fieldContainer[fieldName] = reduced;
+
+      cb( null, fieldContainer );
+    }
   }
 
   function fieldsTransformed( err, fields ){
-    var objectToValidate = {};
+    var reduced = fields.reduce( normalize, {} );
 
-    fields.forEach( declareObject );
+    return cb( err, reduced );
+  }
 
-    return cb( err, objectToValidate );
+  function normalize(previousValue, currentValue){
+    var key = Object.keys( currentValue ).pop();
+    previousValue[key] = currentValue[key];
 
-    function declareObject( fieldData ){
-      var keys = Object.keys( fieldData );
-      
-      keys.splice( keys.indexOf( 'resultCode' ), 1 );
-      
-      var key = keys[0];
-
-      objectToValidate[key] = fieldData[key];
-    }
+    return previousValue;
   }
 }
 
@@ -246,25 +267,31 @@ function transformEntity( entityName, entity, context, cb ) {
 //return a key value pair: fieldName -> transformed value
 function transformField( fieldName, field, context, cb ) {
   var columns = field.input,
-      data = {};
+      data = {},
+      errorFound;
 
   // set on context for use by transformer
   context.fieldName = fieldName;
 
   if( columns ) {
     //collect the input value
-    data.value = columns.map( getColumnData );
+    data = columns.map( getColumnData );
   }
 
   //execute the transformers chained together, input of the second is output of the first and so on
-  return async.eachSeries( field.transformer, applyTransformation, afterChain );
+  return async.eachSeries( field.transformer, applyTransformation, passData );
 
   function getColumnData( columnName ) {
     return context.dataByColumnName[ columnName ];
   }
 
   function applyTransformation(transformerName, cb){
-    var transformerArguments = [context, data.value];
+    if( errorFound || data instanceof Error ) {
+      errorFound = true;
+      return setImmediate( cb );
+    }
+
+    var transformerArguments = [context, data];
 
     if( transformerName.indexOf( '(' ) > -1 ) {
       var result = /\((.+)\)/.exec( transformerName ),
@@ -286,7 +313,9 @@ function transformField( fieldName, field, context, cb ) {
     data = transformer.apply( null, transformerArguments );
 
     // synchronous transformers return data and don't call cb
-    if( data ) setImmediate( cb );
+    if( data || data !== undefined ) {
+      setImmediate( cb );
+    }
 
     function transformerCb(err, passedData){
       if( err ) return cb( err );
@@ -297,16 +326,13 @@ function transformField( fieldName, field, context, cb ) {
     }
   }
 
-  function afterChain(err){
-    var key = fieldName,
-        result = {};
-
+  function passData(err){
     if(!data) console.log( 'no data' );
 
-    result.resultCode = data.resultcode;
-    result[key] = data.value;
+    var fieldContainer = {};
+    fieldContainer[fieldName] = data;
 
-    cb( err, result );
+    cb( err, fieldContainer );
   }
 }
 
@@ -331,7 +357,6 @@ function transform(dataset, mapping, bucket){
   return transformFile(schemaPath, mappingPath, dataPath, bucket, finishCb);
 
   function finishCb( err, results ) {
-    console.log('finishCb');
     if(err) return done(err);
     
     console.log('yay, writing output');

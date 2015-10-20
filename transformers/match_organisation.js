@@ -1,5 +1,3 @@
-var ResultCode = require('../resultCode');
-
 var organisations = {
 	PVDA: '/pvda.nl',
 	CDA: '/cda.nl'
@@ -9,11 +7,8 @@ var organisations = {
 //only matches hardcoded two organisations for now
 exports.transform = function (context, data) {
 	if(!organisations[data]){
-		return { resultcode: ResultCode.FAIL };
+		return new Error('match_organisation: organisation not found, data: ' + JSON.stringify(data));
 	}
 
-	return {
-		value: organisations[data],
-		resultcode: ResultCode.OK
-	};
+	return organisations[data];
 };
