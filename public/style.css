@@ -152,7 +152,7 @@ body{
 
 .introbar{
   padding: 1.5% 2%;
-  background: #264653;
+  background: #F5EDF0;
   color: white;
   width: 170px;
   float: left;
@@ -175,11 +175,10 @@ footer{
 	width: 100%;
 	float: left;
 }
-
 #mainnav{
   background-color: #F5EDF0;
-  padding: 1em 4% 0;
-  width: calc(100% - 170px);
+  padding: 1em 0 0;
+  width: calc(100% - 200px);
   position: absolute;
   right: 0;
   bottom: 0;
@@ -190,7 +189,7 @@ footer{
   padding: .3em .5em .5em;
   line-height: 2.2em;
 	text-decoration: none;
-  margin: 0 1em 0 0;
+  margin: 0 .5em 0 .5em;
 }
 #content{
   padding: 4%;
@@ -256,12 +255,28 @@ footer{
 	cursor: pointer;
 }
 
-button{
+button, .btn{
 	padding: .5em 1em;
 	background-color: #2A9D8F;
 	color: white;
 	font-weight: bold;
 	cursor: pointer;
+	border-radius: 2px;
+}
+
+.btn[disabled], button[disabled]{
+	background-color: grey;
+	cursor: default;
+	color: white;
+	opacity: .2;
+}
+
+.actionBar{
+	margin: 2em .5em;
+}
+
+#transform{
+	margin-left: .5em;
 }
 
 .reject-all {
