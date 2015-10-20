@@ -128,7 +128,7 @@ function requestAdded(e){
 
 function setConvertLink(){
 	var url = location.href + '/transform/' + document.getElementById( 'mapping' ).value;
-
+	document.getElementById('transform').removeAttribute("disabled");
 	document.getElementById('transform').href = url;
 }
 
@@ -192,14 +192,15 @@ function Revision(data){
 
 	rejectAllButton.className = 'reject-all';
 	approveAllButton.className = 'approve-all';
+	approveAllButton.setAttribute("disabled", true);
 	rejectAllButton.innerHTML = 'Reject all';
 	approveAllButton.innerHTML = 'Approve all';
 
 	modifyTableCell.appendChild(modifyItems);
 
-	resultTableCell.appendChild(rejectAllButton);
-
 	resultTableCell.appendChild(resultItems);
+
+	resultTableCell.appendChild(rejectAllButton);
 
 	resultTableCell.appendChild( approveAllButton );
 

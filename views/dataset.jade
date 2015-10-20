@@ -17,8 +17,9 @@ block content
 					td= dataset.entries
 					td= dataset.modified.toISOString().substring(0,10)
 					td= dataset.size
-		select#mapping
-			option choose one
-			each map in env.mappings
-				option= map
-		a#transform Transform
+		.actionBar
+			select#mapping
+				option choose one
+				each map in env.mappings
+					option= map
+			a.btn#transform(disabled) Transform
