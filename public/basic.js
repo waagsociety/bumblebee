@@ -196,9 +196,9 @@ function Revision(data){
 
 	modifyTableCell.appendChild(modifyItems);
 
-	resultTableCell.appendChild(rejectAllButton);
-
 	resultTableCell.appendChild(resultItems);
+
+	resultTableCell.appendChild(rejectAllButton);
 
 	resultTableCell.appendChild( approveAllButton );
 
