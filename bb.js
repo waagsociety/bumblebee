@@ -147,7 +147,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
           delete entity.sourceData;
           delete entity.schema;
 
-          Object.keys( entity ).forEach( getErrorAndPruneIt );
+          Object.keys( entity ).forEach( _.partial( getErrorAndPruneIt, entity ) );
           
           return {
             schema: schema,
@@ -157,11 +157,16 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
             key: 'k' + uuid.v4()
           };
 
-          function getErrorAndPruneIt( key ){
-            if( entity[key] instanceof Error ){
-              errors[key] = entity[key];
+          function getErrorAndPruneIt( entity, key ){
+            var value = entity[key];
+
+            if( value instanceof Error ){
+              errors[key] = value;
               entity[key] = '';
             }
+
+            // do for nested properties
+            if( typeof value === 'object') Object.keys( value ).forEach( _.partial( getErrorAndPruneIt, value ) );
           }
         }
       }

@@ -1,3 +1,6 @@
+// http://stackoverflow.com/questions/3143070/javascript-regex-iso-datetime
+var dateISOStringRegExp = /(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))/;
+
 var socket,
 		socketKey,
 		validator;
@@ -16,6 +19,7 @@ var boundDelegates = {},
 			'#mapping': { change: setConvertLink },
 			'#pending-revisions': { DOMNodeInserted: requestAdded },
 			'input.modify': { keyup: handleModifyKeyUp },
+			'input[type=date]': { change: handleModifyDateChange },
 			'.resultItem.valid, .resultItem.approved': { click: toggleResultStatus },
 			'.reject-all': { click: rejectAll },
 			'.approve-all': { click: approveAll }
@@ -88,6 +92,8 @@ function approveAll(e){
 }
 
 function handleModifyKeyUp(e){
+	if(this.type && this.type === 'date') return;
+
 	if( e.keyCode === 13 ) { //enter
 		return approveAll();
 	}
@@ -99,11 +105,11 @@ function handleModifyKeyUp(e){
 	var modifyItem = this.bbQuerySelectorParent( '.modifiableItem' ),
 			entity = revisingEntities[modifyItem.dataset.key],
 			resultItem = modifyItem && document.querySelector( '.resultItem[data-key=' + modifyItem.dataset.key + ']' ),
-			resultValueElement = resultItem.querySelector('td[data-key=' + this.dataset.key + ']' );
+			resultValueElement = resultItem.querySelector('td[data-path=' + this.dataset.path.replace('.', '\\.') + ']' );
 
 	resultValueElement.innerHTML = this.value;
 
-	entity.currentValues[this.dataset.key] = this.value;
+	resolveOnObject(entity.currentValues, this.dataset.path, this.value );
 
 	if( validator.validate( entity.currentValues, entity.schema ) ) {
 		resultItem.classList.add('valid');
@@ -113,6 +119,40 @@ function handleModifyKeyUp(e){
 		resultItem.classList.remove('valid');
 		resultItem.classList.remove('approved');
 	}
+
+	updateApproveAllButton();
+}
+
+function handleModifyDateChange(e){
+	var modifyItem = this.bbQuerySelectorParent( '.modifiableItem' ),
+			entity = revisingEntities[modifyItem.dataset.key],
+			resultItem = modifyItem && document.querySelector( '.resultItem[data-key=' + modifyItem.dataset.key + ']' ),
+			resultValueElement = resultItem.querySelector('td[data-path=' + this.dataset.path.replace('.', '\\.') + ']' ),
+			valueAsDate = new Date( this.value ),
+			isoString = valueAsDate.toISOString();
+
+	resultValueElement.innerHTML = valueAsDate.toString();
+
+	resolveOnObject(entity.currentValues, this.dataset.path, isoString );
+
+	if( validator.validate( entity.currentValues, entity.schema ) ) {
+		resultItem.classList.add('valid');
+		resultItem.classList.remove('invalid');
+	} else {
+		resultItem.classList.add('invalid');
+		resultItem.classList.remove('valid');
+		resultItem.classList.remove('approved');
+	}
+
+	updateApproveAllButton();
+}
+
+function updateApproveAllButton(){
+	var invalidItems = document.querySelectorAll( '.resultItem.invalid' ),
+			approveAllButton = document.querySelector( '.approve-all' );
+
+	if( !invalidItems.length ) approveAllButton.removeAttribute( 'disabled' );
+	else approveAllButton.setAttribute( 'disabled', true );
 }
 
 function requestAdded(e){
@@ -252,16 +292,21 @@ function Revision(data){
 
 		revisingEntities[key] = entity;
 
-		entity.requiredKeys.forEach( createKeyRow );
+		entity.requiredKeys.forEach( createKeyRow.bind( null, entity.originalValues, '' ) );
 
 		return;
 
-		function createKeyRow( key ) {
-			var value = entity.originalValues[key];
+		function createKeyRow( originalValues, path, key ) {
+			var value = originalValues[key],
+					isISODateResults = dateISOStringRegExp.exec( value ),
+					propertyPath = path ? path + '.' + key : key;
 
-			if(typeof value === Object && !( value instanceof Date ) ){
-				return; //todo correctly make sub properties editable
+			if(typeof value === 'object' ){
+				return Object.keys( value ).forEach( createKeyRow.bind( null, value, propertyPath ) );
 			}
+
+			if( isISODateResults ) value = new Date( value );
+
 			var modifyTr = document.createElement('tr'),
 					resultTr = document.createElement('tr'),
 					modifyLabelTd = document.createElement('td'),
@@ -277,8 +322,8 @@ function Revision(data){
 			resultTr.appendChild( resultLabelTd );
 			resultTr.appendChild( resultValueTd );
 
-			modifyLabelTd.appendChild(label);
-			modifyInputTd.appendChild(input);
+			modifyLabelTd.appendChild( label );
+			modifyInputTd.appendChild( input );
 
 			label.innerHTML = key;
 			if(value) input.value = value;
@@ -286,29 +331,35 @@ function Revision(data){
 			resultLabelTd.innerHTML = key;
 			if(value) resultValueTd.innerHTML = value;
 
-			modifyTable.appendChild(modifyTr);
-			resultTable.appendChild(resultTr);
+			modifyTable.appendChild( modifyTr );
+			resultTable.appendChild( resultTr );
 
-			var isRequired = ~schema.required.indexOf(key),
+			var isRequired = ~schema.required.indexOf( key ),
 					isHidden = schema.hidden && ~schema.hidden.indexOf( key ),
 					isFixed = schema.fixed && ~schema.fixed.indexOf( key );
 
-			if(isRequired && !isFixed){
+			if( isRequired && !isFixed ){
 				label.innerHTML += '*';
 			}
-			if(isHidden){
-				modifyTr.classList.add('hidden');
-				resultTr.classList.add('hidden');
+			if( isHidden ){
+				modifyTr.classList.add( 'hidden' );
+				resultTr.classList.add( 'hidden' );
 			}
-			if(isFixed){
+			if( isFixed ){
 				input.disabled = 'disabled';
-				modifyTr.classList.add('disabled');
-				resultTr.classList.add('disabled');
+				modifyTr.classList.add( 'disabled' );
+				resultTr.classList.add( 'disabled' );
+			}
+
+			if( value instanceof Date ) {
+				input.setAttribute( 'type', 'date' );
+				input.valueAsDate = value;
+				resultValueTd.innerHTML = value.toISOString();
 			}
 
 			input.classList.add( 'modify' );
-			input.dataset.key = key;
-			resultValueTd.dataset.key = key;
+			input.dataset.path = propertyPath;
+			resultValueTd.dataset.path = propertyPath;
 		}
 	}
 }
@@ -405,4 +456,20 @@ function handleComplete(results){
 		li.appendChild(element);
 		return li;
 	}
+}
+
+function resolveOnObject(object, path, value){
+	var parts = path.split( '.' ),
+			ref = object,
+			part;
+
+	while( parts.length > 1 && ref){
+		part = parts.shift();
+		ref = ref[part];
+	}
+
+	if(!ref) throw('declareOnObject: object does not contain ' + part + ', full path given: ' + path);
+
+	if(value !== undefined) ref[parts.shift()] = value;
+	return value;
 }
