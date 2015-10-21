@@ -3,6 +3,7 @@ extends layout
 block append header
 	script(src="/socket.io/socket.io.js")
 	script(src="/ZSchema-browser.js")
+	script(src="/revising.js")
 block content
 	- var filename = req.params.filename, dataset = env.datasets[filename], mapping = req.params.mapping;
 	if !dataset
