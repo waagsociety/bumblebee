@@ -190,7 +190,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
       if( anyItemsAreInvalid ) return;
 
-      allEntities.push( Object.keys( data.entities ).map( getEntity ) );
+      Array.prototype.push.apply( allEntities, entityKeys.map( getEntity ) );
       delete entitiesWithRevisionPending[data.revisionId];
 
     }
