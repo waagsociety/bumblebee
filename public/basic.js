@@ -7,7 +7,9 @@ function documentReady(){
 	initEventHandlers();
 	initConnection();
 
-	if( window.ZSchema ) validator = new ZSchema();
+	if( window.ZSchema ) validator = new ZSchema({
+		noEmptyStrings: true
+	});
 }
 
 var boundDelegates = {},
@@ -80,3 +82,23 @@ function setConvertLink(){
 	document.getElementById('transform').removeAttribute("disabled");
 	document.getElementById('transform').href = url;
 }
+
+function resolveOnObject(object, path, value){
+	var parts = path.split( '.' ),
+			ref = object,
+			part;
+
+	while( parts.length > 1 && ref){
+		part = parts.shift();
+		ref = ref[part];
+	}
+
+	if(!ref) throw('declareOnObject: object does not contain ' + part + ', full path given: ' + path);
+
+	part = parts.shift();
+
+	if(value !== undefined) ref[part] = value;
+	
+	return ref[part];
+}
+

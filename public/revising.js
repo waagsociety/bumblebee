@@ -8,6 +8,7 @@ var dateISOStringRegExp = /(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+
 var revisionHandlers = { '#pending-revisions': { DOMNodeInserted: requestAdded },
 			'input.modify': { keyup: handleModifyKeyUp },
 			'input[type=date]': { change: handleModifyDateChange },
+			'select.modify': { change: handleModifyKeyUp },
 			'.resultItem.valid, .resultItem.approved': { click: toggleResultStatus },
 			'.reject-all': { click: rejectAll },
 			'.approve-all': { click: approveAll }
@@ -45,11 +46,11 @@ function handleModifyKeyUp(e){
 	if(this.type && this.type === 'date') return;
 
 	if( e.keyCode === 13 ) { //enter
-		return approveAll();
+		return approveAll(e);
 	}
 
 	if(e.keyCode === 27 ) { //escape
-		return rejectAll();
+		return rejectAll(e);
 	}
 
 	var modifyItem = this.bbQuerySelectorParent( '.modifiableItem' ),
@@ -61,16 +62,7 @@ function handleModifyKeyUp(e){
 
 	resolveOnObject(entity.currentValues, this.dataset.path, this.value );
 
-	if( validator.validate( entity.currentValues, entity.schema ) ) {
-		resultItem.classList.add('valid');
-		resultItem.classList.remove('invalid');
-	} else {
-		resultItem.classList.add('invalid');
-		resultItem.classList.remove('valid');
-		resultItem.classList.remove('approved');
-	}
-
-	updateApproveAllButton();
+	validateItem( entity.currentValues, entity.schema, resultItem );
 }
 
 function handleModifyDateChange(e){
@@ -85,7 +77,11 @@ function handleModifyDateChange(e){
 
 	resolveOnObject(entity.currentValues, this.dataset.path, isoString );
 
-	if( validator.validate( entity.currentValues, entity.schema ) ) {
+	validateItem( entity.currentValues, entity.schema, resultItem );
+}
+
+function validateItem( values, schema, resultItem ){
+	if( validator.validate( values, schema ) ) {
 		resultItem.classList.add('valid');
 		resultItem.classList.remove('invalid');
 	} else {
@@ -93,6 +89,8 @@ function handleModifyDateChange(e){
 		resultItem.classList.remove('valid');
 		resultItem.classList.remove('approved');
 	}
+
+	console.log(validator.getLastErrors());
 
 	updateApproveAllButton();
 }
@@ -221,7 +219,8 @@ function Revision(data){
 		function createKeyRow( originalValues, path, key ) {
 			var value = originalValues[key],
 					isISODateResults = dateISOStringRegExp.exec( value ),
-					propertyPath = path ? path + '.' + key : key;
+					propertyPath = path ? path + '.' + key : key,
+					schemaProperty = resolveOnObject(schema.properties, propertyPath);
 
 			if(typeof value === 'object' ){
 				return Object.keys( value ).forEach( createKeyRow.bind( null, value, propertyPath ) );
@@ -236,7 +235,29 @@ function Revision(data){
 					resultLabelTd = document.createElement('td'),
 					resultValueTd = document.createElement('td'),
 					label = document.createElement('label'),
-					input = document.createElement('input');
+					input;
+
+			if(schemaProperty && schemaProperty['enum'] ){
+				input = document.createElement('select');
+
+				var enums = schemaProperty['enum'];
+
+				enums.forEach( function createOption( optionValue ) {
+					var option = document.createElement('option');
+					option.value = optionValue;
+					option.label = optionValue;
+
+					if( optionValue === value ) option.setAttribute( 'selected', true );
+
+					input.appendChild(option);
+				} );
+
+				if(enums.length === 1){
+					input.disabled = 'disabled';
+				}
+			} else {
+				input = document.createElement('input');
+			}
 
 			modifyTr.appendChild( modifyLabelTd );
 			modifyTr.appendChild( modifyInputTd );
@@ -247,7 +268,7 @@ function Revision(data){
 			modifyLabelTd.appendChild( label );
 			modifyInputTd.appendChild( input );
 
-			label.innerHTML = key;
+			label.innerHTML = propertyPath;
 			if(value) input.value = value;
 
 			resultLabelTd.innerHTML = key;
@@ -378,20 +399,4 @@ function handleComplete(results){
 		li.appendChild(element);
 		return li;
 	}
-}
-
-function resolveOnObject(object, path, value){
-	var parts = path.split( '.' ),
-			ref = object,
-			part;
-
-	while( parts.length > 1 && ref){
-		part = parts.shift();
-		ref = ref[part];
-	}
-
-	if(!ref) throw('declareOnObject: object does not contain ' + part + ', full path given: ' + path);
-
-	if(value !== undefined) ref[parts.shift()] = value;
-	return value;
 }
