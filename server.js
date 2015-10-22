@@ -128,11 +128,13 @@ module.exports = {
         bucket.addSubscriber( sendRequestEdit, socket.id );
       }
 
+      // reject all
       socket.on('dismiss', function(data){
         var bucket = editbuckets.getBucket(data.socketKey);
         bucket.receiveEdit('dismiss', data, _.partial( getNextRevision, _, bucket, data) );
       });
 
+      // approve all
       socket.on('rectify', function(data){
         var bucket = editbuckets.getBucket(data.socketKey);
         bucket.receiveEdit('rectify', data, _.partial( getNextRevision, _, bucket, data) );
