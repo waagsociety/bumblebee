@@ -194,8 +194,14 @@ function Revision(data){
 				key = entity.key,
 				modifyItem = document.createElement('li'),
 				resultItem = document.createElement('ul'),
+				modifyTitle = document.createElement('h5'),
+				resultTitle = document.createElement('h5'),
 				modifyTable = document.createElement('table'),
 				resultTable = document.createElement('table');
+
+		modifyItem.appendChild(modifyTitle);
+		resultItem.appendChild(resultTitle);
+		resultItem.innerHTML = modifyTitle.innerHTML = schema.description;
 
 		modifyItem.appendChild(modifyTable);
 		resultItem.appendChild(resultTable);
@@ -257,6 +263,7 @@ function Revision(data){
 				}
 			} else {
 				input = document.createElement('input');
+				input.placeholder = !schemaProperty ? '' : schemaProperty.description;
 			}
 
 			modifyTr.appendChild( modifyLabelTd );
