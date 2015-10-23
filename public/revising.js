@@ -145,24 +145,25 @@ function Revision(data){
 			rejectAllButton = document.createElement('button'),
 			approveAllButton = document.createElement('button');
 
-	sourceTableCell.appendChild(sourceTable);
-	element.appendChild(sourceTableCell);
-	element.appendChild(modifyTableCell);
-	element.appendChild(resultTableCell);
-
 	rejectAllButton.className = 'reject-all';
 	approveAllButton.className = 'approve-all';
 	approveAllButton.setAttribute("disabled", true);
 	rejectAllButton.innerHTML = 'Reject all';
 	approveAllButton.innerHTML = 'Approve all';
 
-	modifyTableCell.appendChild(modifyItems);
+	sourceTableCell.appendChild(sourceTable);
+	element.appendChild(sourceTableCell);
+	element.appendChild(modifyTableCell);
+	element.appendChild(resultTableCell);
 
-	resultTableCell.appendChild(resultItems);
+	modifyTableCell.appendChild(modifyItems);
 
 	resultTableCell.appendChild(rejectAllButton);
 
 	resultTableCell.appendChild( approveAllButton );
+
+	resultTableCell.appendChild(resultItems);
+
 
 	element.dataset.revisionId = data.revisionId;
 	
