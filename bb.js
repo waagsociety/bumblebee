@@ -74,8 +74,9 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
     function extractEntitiesFromObject( object, cb ) {
       context.dataByColumnName = object;
+      context.currentEntities = {};
 
-      return async.map( context.mapping, createEntity, entitiesCreated );
+      return async.mapSeries( context.mapping, createEntity, entitiesCreated );
 
       function createEntity(entityContainer, cb) {
         var keys = Object.keys( entityContainer ),
@@ -87,8 +88,15 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
         return async.waterfall( [
           _.partial( transformEntity, entityName, entityDefinition, context ),
+          addEntityToCurrentEntities,
           validateEntity
         ], cb );
+
+        function addEntityToCurrentEntities( transformedEntity, cb ) {
+          context.currentEntities[entityName] = transformedEntity;
+
+          cb(null, transformedEntity);
+        }
 
         function validateEntity( transformedEntity, cb ) {
           //schema for the given entity
