@@ -6,7 +6,6 @@ var fs = require( 'fs' ),
   YAML = require( 'js-yaml' ),
   validate = require( 'jsonschema' ).validate,
   csv = require( 'csv' ),
-  sqlite3 = require( 'sqlite3' ).verbose(),
   csvParser = require('./csv_parse'),
   uuid = require('node-uuid'),
   _ = require( 'underscore' );
@@ -38,7 +37,8 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
       entitiesWithRevisionPending = {},
       collectedRevisionsCb;
 
-  bucket.onReceiveEdit(receiveEdit);
+  // enables received revisions to be processed
+  bucket.onReceiveEdit( receiveEdit );
 
   return async.waterfall([
     _.partial( async.each, Object.keys( filesToRead), readFile ),
@@ -117,7 +117,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
           var revisionId = uuid.v4(),
               transportContainer = {
                 revisionId: revisionId,
-                sourceData: entities[0].sourceData,
+                sourceData: entities[0].sourceData, // we take the csv data from the first entity because it's the same for all of them
                 entities: entities.map( createTransportableEntity )
               };
 
