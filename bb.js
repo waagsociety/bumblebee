@@ -187,7 +187,9 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
     collectedRevisionsCb = cb;
   }
 
-  function receiveEdit(editType, data, cb){
+  function receiveEdit(editType, data, cb, afterReceivedSubscriber ) {
+    if(receiveSubscriber && !afterReceivedSubscriber) return receiveSubscriber( editType, data, _.partial( receiveEdit, editType, _, cb, true ) );
+
     if( editType === 'dismiss' ) {
       delete entitiesWithRevisionPending[data.revisionId];
     } else {
@@ -350,7 +352,8 @@ function transformField( fieldName, field, context, cb ) {
 }
 
 var postProcessor,
-    schemaPath;
+    schemaPath,
+    receiveSubscriber;
 
 function setPostProcessor(fun){
   postProcessor = fun;
@@ -358,6 +361,10 @@ function setPostProcessor(fun){
 
 function setSchemaPath(path){
   schemaPath = 'schemas/' + path;
+}
+
+function setReceiveSubscriber(fun){
+  receiveSubscriber = fun;
 }
 
 function transform(dataset, mapping, bucket){
@@ -427,7 +434,8 @@ module.exports = {
   transformFile: transformFile,
   transform: transform,
   setPostProcessor: setPostProcessor,
-  setSchemaPath: setSchemaPath
+  setSchemaPath: setSchemaPath,
+  setReceiveSubscriber: setReceiveSubscriber
 };
 
 function exitLog(){
