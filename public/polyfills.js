@@ -22,14 +22,6 @@
 
 this.Element && function( ElementPrototype ){
 	ElementPrototype.bbQuerySelectorParent = function( selector ){
-		// var possibleParents = [],
-		// 		match;
-
-		// possibleParents.push.apply( possibleParents, document.querySelectorAll( selector ) );
-		
-		// while(possibleParents.length && !match){
-		// 	match = possibleParents.pop().matches(  )
-		// }
 		var element = this,
 				match;
 
@@ -41,4 +33,4 @@ this.Element && function( ElementPrototype ){
 
 		if(match) return match;
 	};
-}( Element.prototype ); 
+}( Element.prototype );
