@@ -67,10 +67,10 @@ html {
 }
 body {
   background-color: #f2f2f2;
-  font-family: 'Source Sans Pro', serif;
+  font-family: 'Source Sans Pro', sans-serif;
   font-weight: 400;
-    font-size: 1em;
-    color: #333
+  font-size: 1em;
+  color: #333
 }
 
 h1, .alpha,
