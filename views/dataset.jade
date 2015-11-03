@@ -17,6 +17,7 @@ block content
 					td= dataset.entries
 					td= dataset.modified.toISOString().substring(0,10)
 					td= dataset.size
+		p= env.text.dataset.preTransformationExplanation
 		.actionBar
 			select#mapping
 				option choose one

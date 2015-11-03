@@ -13,7 +13,8 @@ module.exports.environment = {
 	updateAllDatasets: updateAllDatasets,
 	loadDataset: loadDataset,
 	startTime: new Date(),
-	transform: bb.transform
+	transform: bb.transform,
+	text: require('./text.js')
 };
 
 var env = module.exports.environment;
