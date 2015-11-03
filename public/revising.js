@@ -229,7 +229,7 @@ function Revision(data){
 					propertyPath = path ? path + '.' + key : key,
 					schemaProperty = resolveOnObject(schema.properties, propertyPath);
 
-			if(typeof value === 'object' ){
+			if(typeof value === 'object' && value !== null ){
 				return Object.keys( value ).forEach( createKeyRow.bind( null, value, propertyPath ) );
 			}
 
