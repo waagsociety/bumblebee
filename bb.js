@@ -85,6 +85,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
         // set on context for use by transformer
         context.entityName = entityName;
+        context.entityType = entityDefinition.entityType;
 
         return async.waterfall( [
           _.partial( transformEntity, entityName, entityDefinition, context ),
@@ -100,7 +101,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
         function validateEntity( transformedEntity, cb ) {
           //schema for the given entity
-          var schema = context.schema[entityName];
+          var schema = context.schema[ context.entityType ] || context.schema[entityName];
 
           if(!schema) return cb( new Error( 'schema not found for ' + entityName ) );
 
@@ -288,9 +289,13 @@ function transformField( fieldName, field, context, cb ) {
   // set on context for use by transformer
   context.fieldName = fieldName;
 
-  if( columns ) {
-    //collect the input value
-    data = columns.map( getColumnData );
+  if( columns && columns.length ) {
+    //collect the input value(s)
+    if( columns.length === 1 ) {
+      data = columns.map( getColumnData );
+    } else {
+      columns.forEach( setColumnDataOnData );
+    }
   }
 
   //execute the transformers chained together, input of the second is output of the first and so on
@@ -298,6 +303,10 @@ function transformField( fieldName, field, context, cb ) {
 
   function getColumnData( columnName ) {
     return context.dataByColumnName[ columnName ];
+  }
+
+  function setColumnDataOnData( columnName ) {
+    data[ columnName ] = getColumnData( columnName );
   }
 
   function applyTransformation(transformerName, cb){
