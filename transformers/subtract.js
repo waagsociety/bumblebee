@@ -8,5 +8,8 @@ exports.transform = function (context, data, argument) {
 			x = +data[xProp],
 			y = +data[yProp];
 
+	if( isNaN(x) ) return new Error('subtract: first operand is not a number, key: ' + xProp + ', data: ' + JSON.stringify( data ) );
+	if( isNaN(y) ) return new Error('subtract: first operand is not a number, key: ' + yProp + ', data: ' + JSON.stringify( data ) );
+
 	return x - y;
 };
