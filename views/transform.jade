@@ -15,6 +15,7 @@ block content
 				span.emphasis= req.params.filename
 				| with 
 				span.emphasis= mapping
+			p= env.transform.topExplanation
 		span#socketkey(data-socketkey=socketKey)= socketKey
 		section#pending-revisions
 			table
