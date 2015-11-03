@@ -10,7 +10,11 @@ block content
 		h1.error= "Dataset " + filename + " not found :("
 	else
 		header
-			h2= 'transforming ' + req.params.filename + ' with ' + mapping
+			h2.epsilon
+				| transforming 
+				span.emphasis= req.params.filename
+				| with 
+				span.emphasis= mapping
 		span#socketkey(data-socketkey=socketKey)= socketKey
 		section#pending-revisions
 			table
