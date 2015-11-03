@@ -1,6 +1,6 @@
 {
   "name": "bumblebee",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Human-assisted ETL",
   "main": "index.js",
   "dependencies": {
