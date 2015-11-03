@@ -80,7 +80,7 @@ h4, .delta,
 h5, .epsilon,
 h6, .zeta {
   margin: 0;
-  font-family: 'Source Sans Pro', serif;
+  font-family: 'Source Sans Pro', sans-serif;
   font-weight: 600; }
 
 strong {
