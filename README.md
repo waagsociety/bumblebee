@@ -2,6 +2,8 @@
 
 How to use:
 
+see demo project at http://github.com/waagsociety/bumblebee-demo
+
 create/modify `package.json`
 (to create you can use `npm init` command)
 
