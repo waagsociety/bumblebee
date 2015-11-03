@@ -1,104 +1,104 @@
 var socket,
-		socketKey;
+    socketKey;
 
 document.addEventListener( 'DOMContentLoaded', documentReady );
 
 function documentReady(){
-	initEventHandlers();
-	initConnection();
+  initEventHandlers();
+  initConnection();
 
-	if( window.ZSchema ) validator = new ZSchema({
-		noEmptyStrings: true
-	});
+  if( window.ZSchema ) validator = new ZSchema({
+    noEmptyStrings: true
+  });
 }
 
 var boundDelegates = {},
-		eventHandlers = {
-			'#mapping': { change: setConvertLink }
-		};
+    eventHandlers = {
+      '#mapping': { change: setConvertLink }
+    };
 
 function initEventHandlers(){
-	Object.keys( eventHandlers ).forEach( bindHandlersForElement );
+  Object.keys( eventHandlers ).forEach( bindHandlersForElement );
 
-	function bindHandlersForElement( selector ){
-		var handlers = eventHandlers[selector],
-				element = document.querySelector( selector );
-		if( element ) Object.keys( handlers ).forEach( bindEvent );
-		else Object.keys( handlers ).forEach( bindDelegate );
+  function bindHandlersForElement( selector ){
+    var handlers = eventHandlers[selector],
+        element = document.querySelector( selector );
+    if( element ) Object.keys( handlers ).forEach( bindEvent );
+    else Object.keys( handlers ).forEach( bindDelegate );
 
-		function bindEvent( eventName ){
-			element.addEventListener( eventName, handlers[eventName] );
-		}
+    function bindEvent( eventName ){
+      element.addEventListener( eventName, handlers[eventName] );
+    }
 
-		function bindDelegate( eventName ){
-			if( !boundDelegates[eventName] ) {
-				boundDelegates[eventName] = {};
-				document.addEventListener( eventName, createDelegateHandler( eventName ) );
-			}
-			boundDelegates[ eventName ][ selector] = handlers[eventName];
-		}
-	}
+    function bindDelegate( eventName ){
+      if( !boundDelegates[eventName] ) {
+        boundDelegates[eventName] = {};
+        document.addEventListener( eventName, createDelegateHandler( eventName ) );
+      }
+      boundDelegates[ eventName ][ selector] = handlers[eventName];
+    }
+  }
 
-	function createDelegateHandler( eventName ) {
-		return function delegateEvent(e){
-			var delegates = boundDelegates[eventName],
-					target = e.target,
-					result = true, didAnyCancel;
+  function createDelegateHandler( eventName ) {
+    return function delegateEvent(e){
+      var delegates = boundDelegates[eventName],
+          target = e.target,
+          result = true, didAnyCancel;
 
-			while( target && result ){
-				didAnyCancel = Object.keys( delegates ).map( evaluateHandler );
-				result = !~didAnyCancel.indexOf(false);
+      while( target && result ){
+        didAnyCancel = Object.keys( delegates ).map( evaluateHandler );
+        result = !~didAnyCancel.indexOf(false);
 
-				target = target.parentNode;
-			}
+        target = target.parentNode;
+      }
 
-			function evaluateHandler( selector ){
-				if( target.matches && target.matches( selector ) ) return delegates[selector].call( target, e );
-			}
-		}
-	}
+      function evaluateHandler( selector ){
+        if( target.matches && target.matches( selector ) ) return delegates[selector].call( target, e );
+      }
+    }
+  }
 }
 
 function initConnection(){
-	if( !window.io ) return;
+  if( !window.io ) return;
 
-	socket = io();
+  socket = io();
 
-	var keyContainer = document.getElementById('socketkey');
-	
-	socketKey = keyContainer && keyContainer.dataset.socketkey;
-	
-	socket.emit('socketkey', socketKey);
+  var keyContainer = document.getElementById('socketkey');
+  
+  socketKey = keyContainer && keyContainer.dataset.socketkey;
+  
+  socket.emit('socketkey', socketKey);
 
-	socket.on('requestedit', createRevisionJob);
+  socket.on('requestedit', createRevisionJob);
 
-	socket.on('remove', removeRevision);
+  socket.on('remove', removeRevision);
 
-	socket.on('complete', handleComplete);
+  socket.on('complete', handleComplete);
 }
 
 function setConvertLink(){
-	var url = location.href + '/transform/' + document.getElementById( 'mapping' ).value;
-	document.getElementById('transform').removeAttribute("disabled");
-	document.getElementById('transform').href = url;
+  var url = location.href + '/transform/' + document.getElementById( 'mapping' ).value;
+  document.getElementById('transform').removeAttribute("disabled");
+  document.getElementById('transform').href = url;
 }
 
 function resolveOnObject(object, path, value){
-	var parts = path.split( '.' ),
-			ref = object,
-			part;
+  var parts = path.split( '.' ),
+      ref = object,
+      part;
 
-	while( parts.length > 1 && ref){
-		part = parts.shift();
-		ref = ref[part];
-	}
+  while( parts.length > 1 && ref){
+    part = parts.shift();
+    ref = ref[part];
+  }
 
-	if(!ref) throw('declareOnObject: object does not contain ' + part + ', full path given: ' + path);
+  if(!ref) throw('declareOnObject: object does not contain ' + part + ', full path given: ' + path);
 
-	part = parts.shift();
+  part = parts.shift();
 
-	if(value !== undefined) ref[part] = value;
-	
-	return ref[part];
+  if(value !== undefined) ref[part] = value;
+  
+  return ref[part];
 }
 
