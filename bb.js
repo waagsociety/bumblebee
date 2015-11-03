@@ -106,7 +106,11 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
           if(!schema) return cb( new Error( 'schema not found for ' + entityName ) );
 
           //validate according to schema
-          transformedEntity.isValid = isValid( schema, transformedEntity );
+          var validateResult = validate( transformedEntity, schema );
+
+          transformedEntity.isValid = validateResult.valid;
+          
+          if(!transformedEntity.isValid) transformedEntity.validationErrors = validateResult.errors;
 
           transformedEntity.sourceData = object;
           transformedEntity.schema = schema;
@@ -145,16 +149,19 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
         function stripExtraProps( entity ){
           delete entity.sourceData;
           delete entity.schema;
+          delete entity.validationErrors;
 
           return entity;
         }
 
         function createTransportableEntity( entity ){
           var schema = entity.schema,
-              errors = {};
+              errors = {},
+              validationErrors = entity.validationErrors;
 
           delete entity.sourceData;
           delete entity.schema;
+          delete entity.validationErrors;
 
           Object.keys( entity ).forEach( _.partial( getErrorAndPruneIt, entity ) );
           
@@ -163,14 +170,16 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
             requiredKeys: Object.keys( entity ),
             originalValues: entity,
             currentValues: entity,
-            key: 'k' + uuid.v4()
+            key: 'k' + uuid.v4(),
+            errors: errors,
+            validationErrors: validationErrors
           };
 
           function getErrorAndPruneIt( entity, key ){
             var value = entity[key];
 
             if( value instanceof Error ){
-              errors[key] = value;
+              errors[key] = value.message;
               entity[key] = '';
             }
 
@@ -218,7 +227,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
       originalItems.entities.forEach( getOriginalEntity );
 
-      return !isValid( entities[entityKey], originalEntity.schema );
+      return !validate( originalEntity.schema, entities[entityKey] ).valid;
 
       function getOriginalEntity( currentEntity ) {
         if(currentEntity.key === entityKey) originalEntity = currentEntity;
@@ -395,7 +404,7 @@ function transform(dataset, mapping, bucket){
     }
 
     return done(null, { write: [{
-      fileSuffix: dataset + '.json',
+      fileSuffix: '.json',
       contents: JSON.stringify(results, null, 2)
     }] });
 
@@ -431,11 +440,6 @@ function flattenEntity( entity ) {
   function declarePropertyOnFlattenedEntity( key ) {
     if( entity[key] !== undefined ) flattenedEntity[key] = entity[key][key] || entity[key];
   }
-}
-
-//validates according to json-schema
-function isValid( schema, object ) {
-  return validate( object, schema ).valid;
 }
 
 module.exports = {

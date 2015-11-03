@@ -56,11 +56,15 @@ function handleModifyKeyUp(e){
 	var modifyItem = this.bbQuerySelectorParent( '.modifiableItem' ),
 			entity = revisingEntities[modifyItem.dataset.key],
 			resultItem = modifyItem && document.querySelector( '.resultItem[data-key=' + modifyItem.dataset.key + ']' ),
-			resultValueElement = resultItem.querySelector('td[data-path=' + this.dataset.path.replace('.', '\\.') + ']' );
+			resultValueElement = resultItem.querySelector('td[data-path=' + this.dataset.path.replace('.', '\\.') + ']' ),
+			schemaProperty = resolveOnObject( entity.schema.properties, this.dataset.path ),
+			value = this.value;
 
-	resultValueElement.innerHTML = this.value;
+	if( schemaProperty.type === 'number' ) value = +value;
+	
+	resultValueElement.innerHTML = value;
 
-	resolveOnObject(entity.currentValues, this.dataset.path, this.value );
+	resolveOnObject(entity.currentValues, this.dataset.path, value );
 
 	validateItem( entity.currentValues, entity.schema, resultItem );
 }
@@ -135,34 +139,38 @@ function setSummary(){
 var revisingEntities = {};
 
 function Revision(data){
-	var element = this.element = document.createElement('tr'),
-			sourceTableCell = document.createElement('td'),
-			modifyTableCell = document.createElement('td'),
-			resultTableCell = document.createElement('td'),
-			sourceTable = document.createElement('table'),
-			modifyItems = document.createElement('ul'),
-			resultItems = document.createElement('ul'),
-			rejectAllButton = document.createElement('button'),
-			approveAllButton = document.createElement('button');
+	var element = this.element = document.createElement( 'tr' ),
+			sourceTableCell = document.createElement( 'td' ),
+			modifyTableCell = document.createElement( 'td' ),
+			resultTableCell = document.createElement( 'td' ),
+			sourceTable = document.createElement( 'table' ),
+			modifyItems = document.createElement( 'ul' ),
+			resultItems = document.createElement( 'ul' ),
+			rejectAllButton = document.createElement( 'button' ),
+			approveAllButton = document.createElement( 'button' ),
+			errorList = document.createElement( 'ul' );
 
 	rejectAllButton.className = 'reject-all';
 	approveAllButton.className = 'approve-all';
-	approveAllButton.setAttribute("disabled", true);
+	approveAllButton.setAttribute( 'disabled', true );
 	rejectAllButton.innerHTML = 'Reject all';
 	approveAllButton.innerHTML = 'Approve all';
 
-	sourceTableCell.appendChild(sourceTable);
-	element.appendChild(sourceTableCell);
-	element.appendChild(modifyTableCell);
-	element.appendChild(resultTableCell);
+  errorList.className = 'errors';
 
-	modifyTableCell.appendChild(modifyItems);
+	sourceTableCell.appendChild( sourceTable );
+	sourceTableCell.appendChild( errorList );
+	element.appendChild( sourceTableCell );
+	element.appendChild( modifyTableCell );
+	element.appendChild( resultTableCell );
 
-	resultTableCell.appendChild(rejectAllButton);
+	modifyTableCell.appendChild( modifyItems );
+
+	resultTableCell.appendChild( rejectAllButton );
 
 	resultTableCell.appendChild( approveAllButton );
 
-	resultTableCell.appendChild(resultItems);
+	resultTableCell.appendChild( resultItems );
 
 
 	element.dataset.revisionId = data.revisionId;
@@ -220,6 +228,9 @@ function Revision(data){
 		revisingEntities[key] = entity;
 
 		entity.requiredKeys.forEach( createKeyRow.bind( null, entity.originalValues, '' ) );
+
+		if( entity.errors ) Object.keys( entity.errors ).forEach( addTransformationError );
+		if( entity.validationErrors ) Object.keys( entity.validationErrors ).forEach( addValidationError );
 
 		return;
 
@@ -308,9 +319,32 @@ function Revision(data){
 				resultValueTd.innerHTML = value.toISOString();
 			}
 
+			if( schemaProperty ) {
+				if( schemaProperty.type && schemaProperty.type === 'number' ) {
+					input.type = 'number';
+				}
+			}
+
 			input.classList.add( 'modify' );
 			input.dataset.path = propertyPath;
 			resultValueTd.dataset.path = propertyPath;
+		}
+
+		function addTransformationError( key ){
+			var error = entity.errors[ key ],
+          li = document.createElement('li');
+
+      li.innerHTML = key + ': ' + error;
+			
+      errorList.appendChild( li );
+		}
+
+		function addValidationError( key ){
+			var error = entity.validationErrors[ key ],
+          li = document.createElement('li');
+      li.innerHTML = error.stack;
+			
+      errorList.appendChild( li );
 		}
 	}
 }

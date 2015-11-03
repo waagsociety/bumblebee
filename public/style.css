@@ -196,9 +196,6 @@ footer{
   float: left;
   width: 100%;
 }
-#content header h2{
-	font-size: 1.2em;	
-}
 
 #quick-convert-output ul {
 	margin-top: 10px;
@@ -312,4 +309,15 @@ button, .btn{
 
 .disabled{
 	opacity: 0.5;
+}
+
+header .emphasis{
+	font-size: 1.2em;
+	line-height: 1em;
+	margin: 1em;
+	color: #CFD;
+}
+
+.errors{
+	color: red;
 }
