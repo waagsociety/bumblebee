@@ -21,13 +21,6 @@ Object.keys( revisionHandlers ).forEach( function( selector ){
 function toggleResultStatus(e){
   this.classList.toggle('valid');
   this.classList.toggle('approved');
-
-  var invalidItems = document.querySelectorAll( '.resultItem.invalid' ),
-      validItems = document.querySelectorAll( '.resultItem.valid' );
-
-  if( !invalidItems.length && !validItems.length ){
-    sendRevisions( this.bbQuerySelectorParent('tr[data-revision-id]') );
-  }
 }
 
 function rejectAll(e){
@@ -143,23 +136,26 @@ function Revision(data){
       sourceTableCell = document.createElement( 'td' ),
       modifyTableCell = document.createElement( 'td' ),
       resultTableCell = document.createElement( 'td' ),
+      sourceItem = document.createElement( 'div' ),
+      sourceTitle = document.createElement( 'h5' ),
       sourceTable = document.createElement( 'table' ),
       modifyItems = document.createElement( 'ul' ),
       resultItems = document.createElement( 'ul' ),
       rejectAllButton = document.createElement( 'button' ),
-      approveAllButton = document.createElement( 'button' ),
-      errorList = document.createElement( 'ul' );
+      approveAllButton = document.createElement( 'button' );
 
   rejectAllButton.className = 'reject-all';
   approveAllButton.className = 'approve-all';
   approveAllButton.setAttribute( 'disabled', true );
-  rejectAllButton.innerHTML = 'Reject all';
-  approveAllButton.innerHTML = 'Approve all';
+  rejectAllButton.innerHTML = text.transform.reject;
+  approveAllButton.innerHTML = text.transform.approve;
 
-  errorList.className = 'errors';
+  sourceItem.className = 'sourceItem';
+  sourceTitle.innerText = text.transform.sourceTitle;
+  sourceItem.appendChild( sourceTitle );
+  sourceItem.appendChild( sourceTable );
+  sourceTableCell.appendChild( sourceItem );
 
-  sourceTableCell.appendChild( sourceTable );
-  sourceTableCell.appendChild( errorList );
   element.appendChild( sourceTableCell );
   element.appendChild( modifyTableCell );
   element.appendChild( resultTableCell );
@@ -206,11 +202,14 @@ function Revision(data){
         modifyTitle = document.createElement('h5'),
         resultTitle = document.createElement('h5'),
         modifyTable = document.createElement('table'),
-        resultTable = document.createElement('table');
+        resultTable = document.createElement('table'),
+        errorItem,
+        errorTitle,
+        errorTable;
 
     modifyItem.appendChild(modifyTitle);
     resultItem.appendChild(resultTitle);
-    resultItem.innerHTML = modifyTitle.innerHTML = schema.description;
+    resultTitle.innerHTML = modifyTitle.innerHTML = schema.description;
 
     modifyItem.appendChild(modifyTable);
     resultItem.appendChild(resultTable);
@@ -229,8 +228,22 @@ function Revision(data){
 
     entity.requiredKeys.forEach( createKeyRow.bind( null, entity.originalValues, '' ) );
 
-    if( entity.errors ) Object.keys( entity.errors ).forEach( addTransformationError );
-    if( entity.validationErrors ) Object.keys( entity.validationErrors ).forEach( addValidationError );
+    if( /*( entity.errors && Object.keys( entity.errors ).length ) ||*/ ( entity.validationErrors && entity.validationErrors.length ) ){
+      errorItem = document.createElement( 'div' );
+      errorItem.className = 'errorItem';
+      errorTitle = document.createElement( 'h5' );
+      errorTitle.innerText = schema.description;
+      errorItem.appendChild( errorTitle );
+      
+      errorTable = document.createElement( 'table' );
+
+      //if( entity.errors ) Object.keys( entity.errors ).forEach( addTransformationError );
+      if( entity.validationErrors && entity.validationErrors.length ) entity.validationErrors.forEach( addValidationError );
+
+      errorItem.appendChild( errorTable );
+
+      sourceTableCell.appendChild( errorItem );
+    }
 
     return;
 
@@ -253,7 +266,7 @@ function Revision(data){
           resultLabelTd = document.createElement('td'),
           resultValueTd = document.createElement('td'),
           label = document.createElement('label'),
-          input;
+          input, tooltip;
 
       if(schemaProperty && schemaProperty['enum'] ){
         input = document.createElement('select');
@@ -286,6 +299,14 @@ function Revision(data){
 
       modifyLabelTd.appendChild( label );
       modifyInputTd.appendChild( input );
+
+      if( schemaProperty && schemaProperty.descriptionLong ){
+        tooltip = document.createElement( 'span' );
+        tooltip.className = 'tooltip-shower';
+        tooltip.dataset.tooltip = schemaProperty.descriptionLong;
+        tooltip.innerText = 'i';
+        modifyInputTd.appendChild( tooltip );
+      }
 
       label.innerHTML = propertyPath;
       if(value) input.value = value;
@@ -331,20 +352,25 @@ function Revision(data){
     }
 
     function addTransformationError( key ){
-      var error = entity.errors[ key ],
-          li = document.createElement('li');
-
-      li.innerHTML = key + ': ' + error;
-      
-      errorList.appendChild( li );
+      addError( key, entity.errors[ key ] );
     }
 
-    function addValidationError( key ){
-      var error = entity.validationErrors[ key ],
-          li = document.createElement('li');
-      li.innerHTML = error.stack;
-      
-      errorList.appendChild( li );
+    function addValidationError( error ){
+      addError( error.property.slice(9), error.message );
+    }
+
+    function addError( key, message ){
+      var tr = document.createElement( 'tr' ),
+          keyTd = document.createElement( 'td' ),
+          messageTd = document.createElement( 'td' );
+
+      keyTd.innerText = key;
+      messageTd.innerText = message;
+
+      tr.appendChild( keyTd );
+      tr.appendChild( messageTd );
+
+      errorTable.appendChild( tr );
     }
   }
 }
@@ -408,7 +434,8 @@ function handleComplete(results){
   var table = document.querySelector('#pending-revisions > table'),
       parentNode = table.parentNode;
 
-  parentNode.innerHTML = 'Transformation complete';
+  parentNode.innerHTML = '';
+  document.querySelector('header.transformation-header h1').innerHTML = 'Transformation complete!';
 
   var ul = document.createElement('ul');
   lis.forEach( ul.appendChild.bind(ul) );
@@ -438,6 +465,7 @@ function handleComplete(results){
 
   function embedInLi(element){
     var li = document.createElement('li');
+    li.className = 'transformation-result';
     li.appendChild(element);
     return li;
   }

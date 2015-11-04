@@ -125,6 +125,7 @@ module.exports = {
 
       function getNextRevision(err, bucket, data){
         socket.emit( 'remove', data.revisionId );
+
         bucket.addSubscriber( sendRequestEdit, socket.id );
       }
 

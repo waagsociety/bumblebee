@@ -9,13 +9,13 @@ block content
 	if !dataset
 		h1.error= "Dataset " + filename + " not found :("
 	else
-		header
-			h2.epsilon
+		header.transformation-header
+			h1.epsilon
 				| transforming 
 				span.emphasis= req.params.filename
 				| with 
 				span.emphasis= mapping
-			p= env.transform.topExplanation
+			// p= env.text.transform.topExplanation
 		span#socketkey(data-socketkey=socketKey)= socketKey
 		section#pending-revisions
 			table

@@ -4,6 +4,7 @@ html
     link(href='/style.css', rel='stylesheet')
     script(src="/polyfills.js")
     script(src="/ajaxRequest.js")
+    script!= 'var text = ' + JSON.stringify(env.text, null, 2) + ';'
     block header
     if env.additionalStylesheets
       each sheet in env.additionalStylesheets
