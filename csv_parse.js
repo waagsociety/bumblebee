@@ -16,17 +16,15 @@ function getDelimiter( line ) {
 
 function smartParse( csvData, header ){
 	var lines = csvData.split('\n'),
-		header = lines.shift(),
-		delimiter = getDelimiter(header);
+			delimiter;
 
+	header = header || lines.shift();
+	
+	delimiter = getDelimiter(header);
 	header = header.split( delimiter );
 
 	var objects = [],
-		byKey = {};
-
-	header.forEach( function( key ){
-		byKey[key] = {};
-	} );
+			byKey = {};
 
 	lines.forEach(parseAndStow);
 
@@ -51,11 +49,16 @@ function smartParse( csvData, header ){
 		return;
 
 		function stow( value, index ){
-			var key = header[index];
+			var key = header[index],
+					i;
 
-			if(!key) throw('\033[31mkey (' + index + ') not found for \033[33m' + value + '\033[31m on line \033[0m' + ( lines.indexOf( line ) + 1 ) + '\033[31m: \033[33m' + line + '\033[0m' );
+			if( !key ) {
+				i = 1;
+				while( ( key = 'unknown-key-' + i ) in lineObject ) ++i;
+			}
 			
 			lineObject[key] = value;
+			byKey[ key ] = byKey[ key ] || {};
 			byKey[key][value] = lineObject;
 		}
 	}
