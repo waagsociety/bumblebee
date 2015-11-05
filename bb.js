@@ -66,6 +66,8 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
     context.mapping = mapping;
     context.parsedFile = parsedFile;
 
+
+
     setImmediate( _.partial( cb, null, context ) );
   }
 
@@ -302,7 +304,7 @@ function transformField( fieldName, field, context, cb ) {
   if( columns && columns.length ) {
     //collect the input value(s)
     if( columns.length === 1 ) {
-      data = columns.map( getColumnData );
+      data = getColumnData( columns[ 0 ] );
     } else {
       columns.forEach( setColumnDataOnData );
     }
@@ -345,7 +347,7 @@ function transformField( fieldName, field, context, cb ) {
     if( !transformer ) throw( 'transformer ' + transformerName + ' not found' );
     
     data = transformer.apply( null, transformerArguments );
-
+    
     // synchronous transformers return data and don't call cb
     if( data || data !== undefined ) {
       setImmediate( cb );
@@ -427,19 +429,6 @@ function transform(dataset, mapping, bucket){
       return '/output/' + dataset + fileContainer.fileSuffix;
     }
 
-  }
-}
-
-
-function flattenEntity( entity ) {
-  var flattenedEntity = {};
-
-  Object.keys( entity ).forEach( declarePropertyOnFlattenedEntity );
-
-  return flattenedEntity;
-
-  function declarePropertyOnFlattenedEntity( key ) {
-    if( entity[key] !== undefined ) flattenedEntity[key] = entity[key][key] || entity[key];
   }
 }
 
