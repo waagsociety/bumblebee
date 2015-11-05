@@ -8,7 +8,9 @@ var fs = require( 'fs' ),
   csv = require( 'csv' ),
   csvParser = require('./csv_parse'),
   uuid = require('node-uuid'),
-  _ = require( 'underscore' );
+  _ = require( 'underscore' ),
+  dumbstore = require('dumbstore'),
+  stableStringify = require('json-stable-stringify');
 
 var log = true;
 
@@ -35,6 +37,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
       context = {},
       allEntities = [],
       entitiesWithRevisionPending = {},
+      revisedEntitiesStore = dumbstore.getStore( 'KeyValueStore', 'revised-entities' ),
       collectedRevisionsCb;
 
   // enables received revisions to be processed
@@ -65,8 +68,6 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
     context.schema = schema;
     context.mapping = mapping;
     context.parsedFile = parsedFile;
-
-
 
     setImmediate( _.partial( cb, null, context ) );
   }
@@ -129,6 +130,16 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
         if(!invalidFound){
           allEntities.push.apply( allEntities, entities.map( stripExtraProps ) );
         } else {
+
+          // first check revised entities store for previously revised entities with same csv data
+          var stored = revisedEntitiesStore.get( stableStringify( entities[ 0 ].sourceData ) );
+          if( stored === 'rejected' ) return cb();
+          if( stored ){
+            stored = JSON.parse( stored );
+            allEntities.push.apply( allEntities, stored );
+            return cb();
+          }
+
           var revisionId = uuid.v4(),
               transportContainer = {
                 revisionId: revisionId,
@@ -200,12 +211,21 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
   }
 
   function receiveEdit(editType, data, cb, afterReceivedSubscriber ) {
+    var originalData = entitiesWithRevisionPending[ data.revisionId ],
+        sourceData = originalData.sourceData;
+
     // if we're listening to incoming revisions for any reason, go there first, then come back here
-    if(receiveSubscriber && !afterReceivedSubscriber) return receiveSubscriber( editType, data, entitiesWithRevisionsPending[ data.revisionId ], _.partial( receiveEdit, editType, _, cb, true ) );
+    if(receiveSubscriber && !afterReceivedSubscriber) return receiveSubscriber( editType, data, entitiesWithRevisionPending[ data.revisionId ], _.partial( receiveEdit, editType, _, cb, true ) );
+
+    var sourceDataString = stableStringify( sourceData );
 
     if( editType === 'dismiss' ) {
+      
+      revisedEntitiesStore.add( sourceDataString, 'rejected' );
       delete entitiesWithRevisionPending[data.revisionId];
+    
     } else {
+      
       var originalItems = entitiesWithRevisionPending[data.revisionId],
           entities = data.entities,
           entityKeys = Object.keys(data.entities),
@@ -214,6 +234,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
       if( anyItemsAreInvalid ) return;
 
       Array.prototype.push.apply( allEntities, entityKeys.map( getEntity ) );
+      revisedEntitiesStore.add( sourceDataString, JSON.stringify( Object.keys( entities ).map( function( key ){ return entities[ key ]; } ) ) );
       delete entitiesWithRevisionPending[data.revisionId];
 
     }
