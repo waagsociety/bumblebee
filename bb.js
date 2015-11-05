@@ -199,7 +199,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
   function receiveEdit(editType, data, cb, afterReceivedSubscriber ) {
     // if we're listening to incoming revisions for any reason, go there first, then come back here
-    if(receiveSubscriber && !afterReceivedSubscriber) return receiveSubscriber( editType, data, _.partial( receiveEdit, editType, _, cb, true ) );
+    if(receiveSubscriber && !afterReceivedSubscriber) return receiveSubscriber( editType, data, entitiesWithRevisionsPending[ data.revisionId ], _.partial( receiveEdit, editType, _, cb, true ) );
 
     if( editType === 'dismiss' ) {
       delete entitiesWithRevisionPending[data.revisionId];
