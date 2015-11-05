@@ -336,7 +336,12 @@ function Revision(data){
 
       if( value instanceof Date ) {
         input.setAttribute( 'type', 'date' );
-        input.valueAsDate = value;
+        try{
+          input.valueAsDate = value;
+        } catch(e){
+          input.value = value.toString();
+        }
+
         resultValueTd.innerHTML = value.toISOString();
       }
 
