@@ -331,6 +331,8 @@ function transformField( fieldName, field, context, cb ) {
     }
   }
 
+  if( !field.transformer || !field.transformer.length ) return passData();
+
   //execute the transformers chained together, input of the second is output of the first and so on
   return async.eachSeries( field.transformer, applyTransformation, passData );
 
