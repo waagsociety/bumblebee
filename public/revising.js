@@ -53,7 +53,7 @@ function handleModifyKeyUp(e){
       schemaProperty = resolveOnObject( entity.schema.properties, this.dataset.path ),
       value = this.value;
 
-  if( schemaProperty.type === 'number' ) value = +value;
+  if( schemaProperty && schemaProperty.type === 'number' ) value = +value;
   
   resultValueElement.innerHTML = value;
 
@@ -311,7 +311,7 @@ function Revision(data){
       label.innerHTML = propertyPath;
       if(value) input.value = value;
 
-      resultLabelTd.innerHTML = key;
+      resultLabelTd.innerHTML = propertyPath;
       if(value) resultValueTd.innerHTML = value;
 
       modifyTable.appendChild( modifyTr );
