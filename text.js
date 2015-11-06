@@ -12,6 +12,9 @@ module.exports = {
 	},
 	transform: {
 		topExplanation: 'Some items may not pass validation. Please correct the items that pop up below, and either approve them or reject them',
+		sourceColumnHeader: 'Source',
+		modifyColumnHeader: 'Modify',
+		resultColumnHeader: 'Results',
 		sourceTitle: 'Data from source file',
 		approve: 'Approve',
 		reject: 'Reject'

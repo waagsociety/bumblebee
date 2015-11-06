@@ -14,6 +14,11 @@ var cwd = process.cwd();
 
 var transformationsInProgress = [];
 
+var mimeTypes = {
+      'json': 'application/json',
+      'ndjson': 'application/x-ndjson'
+    };
+
 //var applyRoutes = require('./hoprouter.js').applyRoutes;
 
 module.exports = {
@@ -207,17 +212,18 @@ module.exports = {
     }
 
     function sendOutputFile(req, res, next){
-      var filename = 'output/' + req.params.filename;
+      var filename = 'output/' + req.params.filename,
+          extension = req.params.filename.split('.').pop(),
+          contentType = req.query.raw ? 'text/plain' : mimeTypes[ extension ] || 'text/plain';
 
       return fs.exists(filename, function( exists ){
-        console.log(filename, cwd);
         if(!exists) return next('not found');
 
         return fs.stat(filename, function(err, stat){
           if(err) return next(err);
 
           res.writeHead(200, {
-            'Content-Type': 'text/plain',
+            'Content-Type': contentType,
             'Content-Length': stat.size
           });
 

@@ -21,9 +21,12 @@ block content
 			table
 				thead
 					tr
-						td Source
-						td Modify
-						td Result
+						td.source= env.text.transform.sourceColumnHeader
+						td.modify= env.text.transform.modifyColumnHeader
+						td.result
+							= env.text.transform.resultColumnHeader
+							button.reject-all= env.text.transform.reject
+							button.approve-all= env.text.transform.approve
 				tbody
 				tfoot
 			span#pending-revisions-summary

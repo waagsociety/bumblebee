@@ -24,14 +24,14 @@ function toggleResultStatus(e){
 }
 
 function rejectAll(e){
-  sendRevisions( e.target.bbQuerySelectorParent('[data-revision-id]'), 'dismiss' );
+  sendRevisions( document.querySelector('[data-revision-id]'), 'dismiss' );
 }
 
 function approveAll(e){
   var invalidItems = document.querySelectorAll( '.resultItem.invalid' );
 
   if( !invalidItems.length ){
-    sendRevisions( e.target.bbQuerySelectorParent('[data-revision-id]') );
+    sendRevisions( document.querySelector('[data-revision-id]') );
   }
 }
 
@@ -101,7 +101,7 @@ function validateItem( values, schema, input, resultItem ){
 
 function updateApproveAllButton(){
   var invalidItems = document.querySelectorAll( '.resultItem.invalid' ),
-      approveAllButton = document.querySelector( '.approve-all' );
+      approveAllButton = document.querySelector( 'button.approve-all' );
 
   if( !invalidItems.length ) approveAllButton.removeAttribute( 'disabled' );
   else approveAllButton.setAttribute( 'disabled', true );
@@ -149,13 +149,9 @@ function Revision(data){
       modifyItems = document.createElement( 'ul' ),
       resultItems = document.createElement( 'ul' ),
       rejectAllButton = document.createElement( 'button' ),
-      approveAllButton = document.createElement( 'button' );
+      approveAllButton = document.querySelector( 'button.approve-all' );
 
-  rejectAllButton.className = 'reject-all';
-  approveAllButton.className = 'approve-all';
   approveAllButton.setAttribute( 'disabled', true );
-  rejectAllButton.innerHTML = text.transform.reject;
-  approveAllButton.innerHTML = text.transform.approve;
 
   sourceItem.className = 'sourceItem';
   sourceTitle.innerText = text.transform.sourceTitle;
@@ -168,10 +164,6 @@ function Revision(data){
   element.appendChild( resultTableCell );
 
   modifyTableCell.appendChild( modifyItems );
-
-  resultTableCell.appendChild( rejectAllButton );
-
-  resultTableCell.appendChild( approveAllButton );
 
   resultTableCell.appendChild( resultItems );
 
@@ -471,7 +463,8 @@ function handleComplete(results){
     var span = document.createElement('span'),
         aDownload = document.createElement('a'),
         aView = document.createElement('a'),
-        filename = file.split('/').pop();
+        filename = file.split('/').pop(),
+        extension = filename.split('.').pop();
 
     span.innerHTML = filename;
 
@@ -480,6 +473,10 @@ function handleComplete(results){
     aDownload.download = filename;
     aView.innerHTML = 'View';
     aView.target = '_blank';
+
+    if( extension !== 'json' && extension !== 'csv' ) {
+      aView.href += '?raw=true';
+    }
 
     span.appendChild(aDownload);
     span.appendChild(aView);
