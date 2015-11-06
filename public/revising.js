@@ -59,7 +59,7 @@ function handleModifyKeyUp(e){
 
   resolveOnObject(entity.currentValues, this.dataset.path, value );
 
-  validateItem( entity.currentValues, entity.schema, resultItem );
+  validateItem( entity.currentValues, entity.schema, this, resultItem );
 }
 
 function handleModifyDateChange(e){
@@ -74,10 +74,10 @@ function handleModifyDateChange(e){
 
   resolveOnObject(entity.currentValues, this.dataset.path, isoString );
 
-  validateItem( entity.currentValues, entity.schema, resultItem );
+  validateItem( entity.currentValues, entity.schema, this, resultItem );
 }
 
-function validateItem( values, schema, resultItem ){
+function validateItem( values, schema, input, resultItem ){
   if( validator.validate( values, schema ) ) {
     resultItem.classList.add('valid');
     resultItem.classList.remove('invalid');
@@ -87,7 +87,14 @@ function validateItem( values, schema, resultItem ){
     resultItem.classList.remove('approved');
   }
 
-  console.log(validator.getLastErrors());
+  var errors = validator.getLastErrors();
+
+  if( !errors ) input.removeAttribute( 'isvalid' );
+  else{
+    errors.forEach( function( error ){
+      if( error.path.slice( 2 ) === input.dataset.path ) input.setAttribute( 'isvalid', false );
+    } );
+  }
 
   updateApproveAllButton();
 }
@@ -348,6 +355,10 @@ function Revision(data){
       if( schemaProperty ) {
         if( schemaProperty.type && schemaProperty.type === 'number' ) {
           input.type = 'number';
+        }
+
+        if( isRequired && key in entity.errors ){
+          input.setAttribute( 'isvalid', false );
         }
       }
 
