@@ -16,6 +16,7 @@ module.exports = {
 		modifyColumnHeader: 'Modify',
 		resultColumnHeader: 'Results',
 		sourceTitle: 'Data from source file',
+		thereAreErrors: 'Errors occurred, hover here to see them',
 		approve: 'Approve',
 		reject: 'Reject'
 	}

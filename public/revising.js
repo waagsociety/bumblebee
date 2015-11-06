@@ -149,7 +149,9 @@ function Revision(data){
       modifyItems = document.createElement( 'ul' ),
       resultItems = document.createElement( 'ul' ),
       rejectAllButton = document.createElement( 'button' ),
-      approveAllButton = document.querySelector( 'button.approve-all' );
+      approveAllButton = document.querySelector( 'button.approve-all' ),
+      errorContainer = document.createElement( 'div' ),
+      errorTitle = document.createElement( 'h4' );
 
   approveAllButton.setAttribute( 'disabled', true );
 
@@ -175,6 +177,12 @@ function Revision(data){
   data.entities.forEach( createModifyFieldsAndResultForEntity );
 
   revisionItems[data.revisionId] = data;
+
+  if( errorContainer.children ){
+    errorTitle.innerHTML = text.transform.thereAreErrors;
+    errorContainer.insertBefore( errorTitle, errorContainer.firstChild );
+    sourceTableCell.appendChild( errorContainer );
+  }
 
   return;
 
@@ -244,7 +252,7 @@ function Revision(data){
 
       errorItem.appendChild( errorTable );
 
-      sourceTableCell.appendChild( errorItem );
+      errorContainer.appendChild( errorItem );
     }
 
     return;
