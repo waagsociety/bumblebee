@@ -180,19 +180,15 @@ footer{
 }
 #mainnav{
   background-color: #F5EDF0;
-  padding: 1em 0 0;
-  width: calc(100% - 200px);
-  position: absolute;
-  right: 0;
-  bottom: 0;
+  padding: 1em 4%  0 4%;
 }
 #mainnav a{
   background-color: #2A9D8F;
   color: #fff;
   padding: .3em .5em .5em;
   line-height: 2.2em;
-	text-decoration: none;
-  margin: 0 .5em 0 .5em;
+text-decoration: none;
+  margin: 0 1em 0 0;
 }
 #content{
   padding: 4%;
