@@ -33,10 +33,14 @@
     "cli": "node bb.js",
     "test": "nodeunit"
   },
-  "author": "Taco van Dijk",
+  "author": "Taco van Dijk/Ivo de Kler",
   "license": "MIT",
   "bugs": {
-    "url": "http://waag.org"
+    "url": "http://github.com/waagsociety/bumblebee/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/waagsociety/bumblebee.git"
   },
   "homepage": "http://waag.org"
 }
