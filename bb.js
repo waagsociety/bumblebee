@@ -117,6 +117,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
           transformedEntity.sourceData = object;
           transformedEntity.schema = schema;
+          transformedEntity.mapping = entityDefinition;
 
           cb( null, transformedEntity );
         }
@@ -162,6 +163,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
         function stripExtraProps( entity ){
           delete entity.sourceData;
           delete entity.schema;
+          delete entity.mapping;
           delete entity.validationErrors;
 
           return entity;
@@ -169,18 +171,20 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
         function createTransportableEntity( entity ){
           var schema = entity.schema,
+              mapping = entity.mapping,
               errors = {},
               validationErrors = entity.validationErrors;
 
           delete entity.sourceData;
           delete entity.schema;
+          delete entity.mapping;
           delete entity.validationErrors;
 
           Object.keys( entity ).forEach( _.partial( getErrorAndPruneIt, entity ) );
           
           return {
+            mapping: mapping,
             schema: schema,
-            requiredKeys: Object.keys( entity ),
             originalValues: entity,
             currentValues: entity,
             key: 'k' + uuid.v4(),

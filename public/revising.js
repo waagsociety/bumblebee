@@ -204,6 +204,9 @@ function Revision(data){
   function createModifyFieldsAndResultForEntity( entity, i ){
     var schema = entity.schema,
         key = entity.key,
+        properties = Object.keys( entity.mapping ).sort( function( a, b ) {
+          return a.order - b.order;
+        } ),
         modifyItem = document.createElement('li'),
         resultItem = document.createElement('ul'),
         modifyTitle = document.createElement('h5'),
@@ -233,7 +236,7 @@ function Revision(data){
 
     revisingEntities[key] = entity;
 
-    entity.requiredKeys.forEach( createKeyRow.bind( null, entity.originalValues, '' ) );
+    properties.forEach( createKeyRow.bind( null, entity.originalValues, '' ) );
 
     if( /*( entity.errors && Object.keys( entity.errors ).length ) ||*/ ( entity.validationErrors && entity.validationErrors.length ) ){
       errorItem = document.createElement( 'div' );
@@ -255,12 +258,16 @@ function Revision(data){
     return;
 
     function createKeyRow( originalValues, path, key ) {
+      if( key === 'subProperty' ) return;
       var value = originalValues[key],
           isISODateResults = dateISOStringRegExp.exec( value ),
           propertyPath = path ? path + '.' + key : key,
           schemaProperty = resolveOnObject(schema.properties, propertyPath);
 
       if(typeof value === 'object' && value !== null ){
+        return Object.keys( resolveOnObject( entity.mapping, propertyPath ) ).sort( function( a, b ) {
+          return a.order - b.order;
+        }).forEach( createKeyRow.bind( null, value, propertyPath ) );
         return Object.keys( value ).forEach( createKeyRow.bind( null, value, propertyPath ) );
       }
 
