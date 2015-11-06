@@ -1,7 +1,8 @@
 var _ = require('underscore'),
-	async = require('async');
+		async = require('async'),
+		csv = require('csv');
 
-var delimiters = [',', '.', ':', ';', '|', '$', '/', '\\', '-', '_', '`', '~', '\'', '"'];
+var delimiters = [',', '.', ':', ';', '|', '$', '/', '\\', '-', '_', '`', '~', '\''];
 
 function getDelimiter( line ) {
   return delimiters.map( function( character ) {
@@ -14,54 +15,60 @@ function getDelimiter( line ) {
   } ).pop().delimiter;
 }
 
-function smartParse( csvData, header ){
-	var lines = csvData.split('\n'),
+function smartParse( csvData, passedHeader, cb ){
+	if(typeof passedHeader === 'function' ){
+		cb = passedHeader;
+		passedHeader = null;
+	}
+
+	var header = passedHeader || /[^\n^\r\n]+/.exec( csvData )[0],
+			csvDatalines = ( passedHeader ? csvData : csvData.slice( header.length + 1 ) ),
 			delimiter;
 
-	header = header || lines.shift();
-	
 	delimiter = getDelimiter(header);
 	header = header.split( delimiter );
 
-	var objects = [],
-			byKey = {};
+	return csv.parse(csvDatalines, { delimiter: delimiter, relax: true }, postParse );
 
-	lines.forEach(parseAndStow);
+	function postParse( err, lines ) {
+		if( err ) return cb( err );
 
-	return {
-		objects: objects,
-		byKey: byKey,
-		delimiter: delimiter
-	};
+		var objects = [],
+				byKey = {};
 
-	function parseAndStow( line ){
-		if(line === ''){
+		lines.forEach(parseAndStow);
+
+		return cb( null, {
+			objects: objects,
+			byKey: byKey,
+			delimiter: delimiter
+		} );
+
+		function parseAndStow( values ){
+			var lineObject = {};
+
+			values.forEach( stow );
+
+			objects.push( lineObject );
+
 			return;
-		}
 
-		var values = line.split(delimiter),
-			lineObject = {};
+			function stow( value, index ){
+				var key = header[index],
+						i;
 
-		values.forEach( stow );
-
-		objects.push( lineObject );
-
-		return;
-
-		function stow( value, index ){
-			var key = header[index],
-					i;
-
-			if( !key ) {
-				i = 1;
-				while( ( key = 'unknown-key-' + i ) in lineObject ) ++i;
+				if( !key ) {
+					i = 1;
+					while( ( key = 'unknown-key-' + i ) in lineObject ) ++i;
+				}
+				
+				lineObject[key] = value;
+				byKey[ key ] = byKey[ key ] || {};
+				byKey[key][value] = lineObject;
 			}
-			
-			lineObject[key] = value;
-			byKey[ key ] = byKey[ key ] || {};
-			byKey[key][value] = lineObject;
 		}
 	}
+
 
 }
 

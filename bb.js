@@ -62,14 +62,18 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
   function parseFiles( cb ) {
     //process schema definitions, create tables if necessary  
     var schema = YAML.safeLoad( filesContents.path_schema ),
-        mapping = YAML.safeLoad( filesContents.path_mapping ),
-        parsedFile = csvParser( filesContents.path_data );
+        mapping = YAML.safeLoad( filesContents.path_mapping );
 
     context.schema = schema;
     context.mapping = mapping;
-    context.parsedFile = parsedFile;
 
-    setImmediate( _.partial( cb, null, context ) );
+    return csvParser( filesContents.path_data, collectParsedFile );
+
+    function collectParsedFile( err, parsedFile ) {
+      context.parsedFile = parsedFile;
+
+      cb( err, context );
+    }
   }
 
   function extractEntities( context, cb ) {
