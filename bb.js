@@ -14,13 +14,6 @@ var fs = require( 'fs' ),
 
 var log = true;
 
-//Result resultcodes
-ResultCode = {
-  OK : 0, //transformation went okay, no errors
-  FAIL : 1,//transformation failed
-  DUPLICATE : 2 //transformation indicates duplicate key
-};
-
 var transformers = require( './transformers/' );
 
 //start the streaming transformation process 
@@ -288,10 +281,10 @@ function transformEntity( entityName, entity, context, cb ) {
   return async.map( Object.keys( entity ), transformEntityField, fieldsTransformed );
 
   function transformEntityField( fieldName, cb, container, parentFieldName ) {
-    if( fieldName === 'subProperty' ) return cb();
+    if( fieldName === 'bb_subProperty' || fieldName === 'bb_order' ) return cb();
 
     var field = entity[fieldName] || container[fieldName];
-    if(!field.subProperty) return transformField( fieldName, field, context, cb );
+    if(!field.bb_subProperty) return transformField( fieldName, field, context, cb );
     else return async.map( Object.keys( field ), _.partial( transformEntityField, _, _, field, fieldName ), subPropertiesCollectedCb );
 
     function subPropertiesCollectedCb(err, results){ //weird.. gets called with [err, [err, results...]]. so send this way
@@ -313,8 +306,10 @@ function transformEntity( entityName, entity, context, cb ) {
   }
 
   function normalize(previousValue, currentValue){
-    var key = Object.keys( currentValue ).pop();
-    previousValue[key] = currentValue[key];
+    var keys = currentValue && Object.keys( currentValue ),
+        key = keys && keys.length && keys.pop();
+
+    if( key ) previousValue[key] = currentValue[key];
 
     return previousValue;
   }

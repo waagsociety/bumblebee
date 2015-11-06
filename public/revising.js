@@ -197,7 +197,7 @@ function Revision(data){
     var schema = entity.schema,
         key = entity.key,
         properties = Object.keys( entity.mapping ).sort( function( a, b ) {
-          return a.order - b.order;
+          return a.bb_order - b.bb_order;
         } ),
         modifyItem = document.createElement('li'),
         resultItem = document.createElement('ul'),
@@ -250,7 +250,8 @@ function Revision(data){
     return;
 
     function createKeyRow( originalValues, path, key ) {
-      if( key === 'subProperty' ) return;
+      if( key === 'bb_subProperty' || key === 'bb_order' ) return;
+
       var value = originalValues[key],
           isISODateResults = dateISOStringRegExp.exec( value ),
           propertyPath = path ? path + '.' + key : key,
@@ -258,7 +259,7 @@ function Revision(data){
 
       if(typeof value === 'object' && value !== null ){
         return Object.keys( resolveOnObject( entity.mapping, propertyPath ) ).sort( function( a, b ) {
-          return a.order - b.order;
+          return a.bb_order - b.bb_order;
         }).forEach( createKeyRow.bind( null, value, propertyPath ) );
         return Object.keys( value ).forEach( createKeyRow.bind( null, value, propertyPath ) );
       }
