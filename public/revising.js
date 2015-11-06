@@ -180,6 +180,7 @@ function Revision(data){
 
   if( errorContainer.children ){
     errorTitle.innerHTML = text.transform.thereAreErrors;
+    errorContainer.classList.add( 'error-container' );
     errorContainer.insertBefore( errorTitle, errorContainer.firstChild );
     sourceTableCell.appendChild( errorContainer );
   }
@@ -247,7 +248,7 @@ function Revision(data){
       
       errorTable = document.createElement( 'table' );
 
-      //if( entity.errors ) Object.keys( entity.errors ).forEach( addTransformationError );
+      if( entity.errors ) Object.keys( entity.errors ).forEach( addTransformationError );
       if( entity.validationErrors && entity.validationErrors.length ) entity.validationErrors.forEach( addValidationError );
 
       errorItem.appendChild( errorTable );

@@ -227,6 +227,19 @@ footer{
 	border: 1px solid white;
 }
 
+.error-container h4{
+	color: #DC2C04;
+	margin-bottom: 1em;
+	cursor: default;
+}
+.error-container .errorItem {
+	display: none;
+}
+
+.error-container:hover .errorItem {
+	display: block;
+}
+
 .errorItem {
 	margin: 0 0 1em 0;
 	border: 1px solid gray;
