@@ -18,6 +18,24 @@ Object.keys( revisionHandlers ).forEach( function( selector ){
   eventHandlers[selector] = revisionHandlers[selector];
 } );
 
+function initConnection(){
+  if( !window.io ) return;
+
+  socket = io();
+
+  var keyContainer = document.getElementById('socketkey');
+  
+  socketKey = keyContainer && keyContainer.dataset.socketkey;
+  
+  socket.emit('socketkey', socketKey);
+
+  socket.on('requestedit', createRevisionJob);
+
+  socket.on('remove', removeRevision);
+
+  socket.on('complete', handleComplete);
+}
+
 function toggleResultStatus(e){
   this.classList.toggle('valid');
   this.classList.toggle('approved');

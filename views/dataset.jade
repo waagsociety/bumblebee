@@ -1,5 +1,8 @@
 extends layout
 
+block append header
+	script(src="/dataset-overview.js")
+
 block content
 	- var filename = req.params.filename, dataset = env.datasets[filename]
 	if !dataset

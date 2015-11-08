@@ -5,7 +5,7 @@ document.addEventListener( 'DOMContentLoaded', documentReady );
 
 function documentReady(){
   initEventHandlers();
-  initConnection();
+  window.initConnection && initConnection();
 
   if( window.ZSchema ) validator = new ZSchema({
     noEmptyStrings: true
@@ -13,16 +13,14 @@ function documentReady(){
 }
 
 var boundDelegates = {},
-    eventHandlers = {
-      '#mapping': { change: setConvertLink }
-    };
+    eventHandlers = {};
 
 function initEventHandlers(){
   Object.keys( eventHandlers ).forEach( bindHandlersForElement );
 
-  function bindHandlersForElement( selector ){
-    var handlers = eventHandlers[selector],
-        element = document.querySelector( selector );
+  function bindHandlersForElement( nodeSelector ){
+    var handlers = eventHandlers[nodeSelector],
+        element = nodeSelector instanceof Element ? nodeSelector : document.querySelector( nodeSelector ) ;
     if( element ) Object.keys( handlers ).forEach( bindEvent );
     else Object.keys( handlers ).forEach( bindDelegate );
 
@@ -35,7 +33,7 @@ function initEventHandlers(){
         boundDelegates[eventName] = {};
         document.addEventListener( eventName, createDelegateHandler( eventName ) );
       }
-      boundDelegates[ eventName ][ selector] = handlers[eventName];
+      boundDelegates[ eventName ][ nodeSelector] = handlers[eventName];
     }
   }
 
@@ -52,35 +50,11 @@ function initEventHandlers(){
         target = target.parentNode;
       }
 
-      function evaluateHandler( selector ){
-        if( target.matches && target.matches( selector ) ) return delegates[selector].call( target, e );
+      function evaluateHandler( nodeSelector ){
+        if( target.matches && target.matches( nodeSelector ) ) return delegates[nodeSelector].call( target, e );
       }
     }
   }
-}
-
-function initConnection(){
-  if( !window.io ) return;
-
-  socket = io();
-
-  var keyContainer = document.getElementById('socketkey');
-  
-  socketKey = keyContainer && keyContainer.dataset.socketkey;
-  
-  socket.emit('socketkey', socketKey);
-
-  socket.on('requestedit', createRevisionJob);
-
-  socket.on('remove', removeRevision);
-
-  socket.on('complete', handleComplete);
-}
-
-function setConvertLink(){
-  var url = location.href + '/transform/' + document.getElementById( 'mapping' ).value;
-  document.getElementById('transform').removeAttribute("disabled");
-  document.getElementById('transform').href = url;
 }
 
 function resolveOnObject(object, path, value){
