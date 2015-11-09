@@ -9,7 +9,7 @@ var _ = require( 'underscore' ),
     uuid = require('node-uuid'),
     transformEntity = require( './transformEntity' );
 
-var receiveSubscriber;
+var receiveHandlers;
 
 //start the streaming transformation process 
 //provide paths to the configuration files and input
@@ -80,7 +80,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
         // set on context for use by transformer
         context.entityName = entityName;
-        context.entityType = entityDefinition.entityType;
+        context.entityType = entityDefinition.entityType || entityName;
 
         return async.waterfall( [
           _.partial( transformEntity, entityName, entityDefinition, context ),
@@ -96,7 +96,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
         function validateEntity( transformedEntity, cb ) {
           //schema for the given entity
-          var schema = context.schema[ context.entityType ] || context.schema[entityName];
+          var schema = context.schema[ context.entityType ];
 
           if(!schema) return cb( new Error( 'schema not found for ' + entityName ) );
 
@@ -110,6 +110,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
           transformedEntity.sourceData = object;
           transformedEntity.schema = schema;
           transformedEntity.mapping = entityDefinition;
+          transformedEntity.entityType = context.entityType;
 
           cb( null, transformedEntity );
         }
@@ -157,6 +158,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
           delete entity.schema;
           delete entity.mapping;
           delete entity.validationErrors;
+          delete entity.entityType;
 
           return entity;
         }
@@ -164,6 +166,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
         function createTransportableEntity( entity ){
           var schema = entity.schema,
               mapping = entity.mapping,
+              entityType = entity.entityType,
               errors = {},
               validationErrors = entity.validationErrors;
 
@@ -171,6 +174,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
           delete entity.schema;
           delete entity.mapping;
           delete entity.validationErrors;
+          delete entity.entityType;
 
           Object.keys( entity ).forEach( _.partial( getErrorAndPruneIt, entity ) );
           
@@ -179,6 +183,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
             schema: schema,
             originalValues: entity,
             currentValues: entity,
+            entityType: entityType,
             key: 'k' + uuid.v4(),
             errors: errors,
             validationErrors: validationErrors
@@ -211,7 +216,18 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
         sourceData = originalData.sourceData;
 
     // if we're listening to incoming revisions for any reason, go there first, then come back here
-    if(receiveSubscriber && !afterReceivedSubscriber) return receiveSubscriber( editType, data, entitiesWithRevisionPending[ data.revisionId ], _.partial( receiveEdit, editType, _, cb, true ) );
+    if( receiveHandlers && !afterReceivedSubscriber && editType !== 'dismiss' ){
+        return async.map( originalData.entities, function( transportEntity, cb ){
+          var entityType = transportEntity.entityType,
+              handler = receiveHandlers[ entityType ];
+          
+          if( !handler ){
+            return setImmediate( cb );
+          }
+
+          handler( data.entities[ transportEntity.key ], transportEntity.schema, transportEntity.mapping, cb );
+        }, _.partial( receiveEdit, editType, data, cb, true ) );
+    }
 
     var sourceDataString = stableStringify( sourceData );
 
@@ -264,11 +280,11 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
   }
 }
 
-function setReceiveSubscriber( fun ){
-  receiveSubscriber = fun;
+function setReceiveHandlers( handlers ){
+  receiveHandlers = handlers;
 }
 
 module.exports = {
   transformFile : transformFile,
-  setReceiveSubscriber: setReceiveSubscriber
+  setReceiveHandlers: setReceiveHandlers
 };

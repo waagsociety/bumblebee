@@ -21,10 +21,6 @@ function setSchemaPath(path){
   schemaPath = 'schemas/' + path;
 }
 
-function setReceiveSubscriber(fun){
-  transformFileModule.setReceiveSubscriber( fun );
-}
-
 function transform(dataset, mapping, bucket){
   var mappingPath = 'mappings/' + mapping,
       dataPath = 'data/' + dataset;
@@ -73,7 +69,7 @@ module.exports = {
   transform: transform,
   setPostProcessor: setPostProcessor,
   setSchemaPath: setSchemaPath,
-  setReceiveSubscriber: setReceiveSubscriber
+  setReceiveHandlers: transformFileModule.setReceiveHandlers
 };
 
 function exitLog(){
