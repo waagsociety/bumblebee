@@ -115,17 +115,27 @@ module.exports = {
 
         bucket.addSubscriber( sendRequestEdit, socket.id );
 
-        bucket.onComplete( function( err, files ) {
-          socket.emit( 'complete', { error: err, files: files } );
-        }, socket.id );
+        bucket.onStatusUpdate( sendStatusUpdate, socket.id );
 
-        socket.on( 'disconnect', function() {
+        bucket.onComplete( sendComplete, socket.id );
+
+        socket.on( 'disconnect', clearSubscriptions );
+
+        function clearSubscriptions() {
           bucket.clearSubscriptions( socket.id );
-        } );
+        }
       } );
 
       function sendRequestEdit(data) {
         socket.emit( 'requestedit', data );
+      }
+
+      function sendStatusUpdate( data ) {
+        socket.emit( 'status', data );
+      }
+
+      function sendComplete( err, files ) {
+        socket.emit( 'complete', { error: err, files: files } );
       }
 
       function getNextRevision( err, bucket, data ) {

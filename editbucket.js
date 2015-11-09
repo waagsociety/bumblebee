@@ -18,6 +18,7 @@ function Bucket(key){
 	this.key = key;
 	this.requestBus = [];
 	this.subscribers = [];
+	this.statusSubscribers = [];
 	this.completeCbs = [];
 	this.outstandingRevisions = [];
 }
@@ -87,6 +88,17 @@ function Bucket(key){
 
 		this.receiveCb(editType, data, cb);
 	};
+	this.onStatusUpdate = function( fun, socketId ){
+		if( this.status ) fun( this.status );
+		this.statusSubscribers.push( {
+			send: fun,
+			socketId: socketId
+		} );
+	};
+	this.statusUpdate = function( status ){
+		this.status = status.values;
+		this.statusSubscribers.forEach( function( subscriber ){ subscriber.send( status.updated ); } );
+	};
 	this.complete = function(err, data){
 		this.completed = true;
 		if(!this.completeCbs.length) {
@@ -109,7 +121,7 @@ function Bucket(key){
 		}
 	};
 	this.clearSubscriptions = function(socketId){
-		['completeCbs', 'subscribers'].forEach(filterSubscribersList.bind(this));
+		['completeCbs', 'subscribers', 'statusSubscribers'].forEach(filterSubscribersList.bind(this));
 		var outstandingRevisionIndex = -1,
 				bucket = this;
 

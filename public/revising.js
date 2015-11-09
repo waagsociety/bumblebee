@@ -33,6 +33,8 @@ function initConnection(){
 
   socket.on('remove', removeRevision);
 
+  socket.on('status', displayStatus);
+
   socket.on('complete', handleComplete);
 }
 
@@ -462,6 +464,10 @@ function removeRevision(revisionId){
   tbody.appendChild(nextRevision.element);
 
   setSummary();
+}
+
+function displayStatus( status ) {
+  console.log('status:', status);
 }
 
 function handleComplete(results){

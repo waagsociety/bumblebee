@@ -7,9 +7,8 @@ var _ = require( 'underscore' ),
     csvParser = require('./csv_parse'),
     validate = require( 'jsonschema' ).validate,
     uuid = require('node-uuid'),
+    magicStatus = require('magic-status'),
     transformEntity = require( './transformEntity' );
-
-var receiveHandlers;
 
 //start the streaming transformation process 
 //provide paths to the configuration files and input
@@ -26,7 +25,16 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
       allEntities = [],
       entitiesWithRevisionPending = {},
       revisedEntitiesStore = dumbstore.getStore( 'KeyValueStore', 'revised-entities' ),
-      collectedRevisionsCb;
+      collectedRevisionsCb,
+      status = magicStatus({
+        sourceItemsTotal: 0,
+        sourceItemsAutoProcessed: 0,
+        sourceItemsWaiting: 0,
+        sourceItemsReceived: 0,
+        targetItemsTotal: 0,
+        targetItemsAutoProcessed: 0,
+        targetItemsReceived: 0
+      }, bucket.statusUpdate.bind( bucket ), 500 );
 
   // enables received revisions to be processed
   bucket.onReceiveEdit( receiveEdit );
@@ -59,6 +67,8 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
     function collectParsedFile( err, parsedFile ) {
       context.parsedFile = parsedFile;
+
+      status.sourceItemsTotal = parsedFile.objects.length;
 
       cb( err, context );
     }
@@ -123,6 +133,10 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
         if(!invalidFound){
           allEntities.push.apply( allEntities, entities.map( stripExtraProps ) );
+          
+          status.sourceItemsAutoProcessed++;
+          status.targetItemsAutoProcessed += entities.length;
+          status.targetItemsTotal = allEntities.length;
         } else {
 
           // first check revised entities store for previously revised entities with same csv data
@@ -131,6 +145,10 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
           if( stored ){
             stored = JSON.parse( stored );
             allEntities.push.apply( allEntities, stored );
+
+            status.sourceItemsAutoProcessed++;
+            status.targetItemsAutoProcessed += stored.length;
+            status.targetItemsTotal = allEntities.length;
             return cb();
           }
 
@@ -144,6 +162,8 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
           entitiesWithRevisionPending[revisionId] = transportContainer;
 
           bucket.requestEdit( transportContainer );
+
+          status.sourceItemsWaiting++;
         }
 
         return cb();
@@ -231,7 +251,9 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
     var sourceDataString = stableStringify( sourceData );
 
+
     if( editType === 'dismiss' ) {
+      status.sourceItemsReceived++;
       
       revisedEntitiesStore.add( sourceDataString, 'rejected' );
       delete entitiesWithRevisionPending[data.revisionId];
@@ -244,9 +266,12 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
           anyItemsAreInvalid = entityKeys.map(checkIfEntityIsInvalid).reduce( keepFalse, true );
 
       if( anyItemsAreInvalid ) return;
+      status.sourceItemsReceived++;
+      status.targetItemsReceived += entityKeys.length;
 
       Array.prototype.push.apply( allEntities, entityKeys.map( getEntity ) );
       revisedEntitiesStore.add( sourceDataString, JSON.stringify( Object.keys( entities ).map( function( key ){ return entities[ key ]; } ) ) );
+      
       delete entitiesWithRevisionPending[data.revisionId];
 
     }
