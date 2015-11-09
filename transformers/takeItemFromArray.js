@@ -2,7 +2,8 @@
 exports.transform = function (context, data, argument) {
 	if( data === undefined || isNaN( data.length ) ) return new Error('takeItemFromArray: data passed is no array: ' + JSON.stringify( data ) );
 
-	var index = parseInt( argument );
+	var index = parseInt( argument ),
+			item;
 
 	if( isNaN( index ) ) {
 		return new Error('takeItemFromArray: argument passed is not a number, argument: ' + JSON.stringify( argument) );
@@ -11,6 +12,8 @@ exports.transform = function (context, data, argument) {
 	if( index < 0 ) {
 		index = Math.min( data.length + index, data.length );
 	}
+
+	item = data[index];
 	
-  return data[index];
+  return item !== undefined ? item : null;
 };
