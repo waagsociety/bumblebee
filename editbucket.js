@@ -117,7 +117,7 @@ function Bucket(key){
 			while(this.completeCbs.length) {
 				this.completeCbs.shift().send( this.completeErr, this.completeData );
 			}
-			deleteBucket(this.key);
+			//deleteBucket(this.key);
 		}
 	};
 	this.clearSubscriptions = function(socketId){

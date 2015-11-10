@@ -254,6 +254,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
     if( editType === 'dismiss' ) {
       status.sourceItemsReceived++;
+      status.sourceItemsWaiting--;
       
       revisedEntitiesStore.add( sourceDataString, 'rejected' );
       delete entitiesWithRevisionPending[data.revisionId];
@@ -267,6 +268,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
       if( anyItemsAreInvalid ) return;
       status.sourceItemsReceived++;
+      status.sourceItemsWaiting--;
       status.targetItemsReceived += entityKeys.length;
 
       Array.prototype.push.apply( allEntities, entityKeys.map( getEntity ) );
