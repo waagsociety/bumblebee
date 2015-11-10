@@ -35,14 +35,14 @@ function transform(dataset, mapping, bucket){
     
     console.log('yay, writing output');
 
-    if(postProcessor){
-      return postProcessor(results, done);
+    if( postProcessor ){
+      return postProcessor( results, bucket, done );
     }
 
-    return done(null, { write: [{
+    return done( null, { write: [ {
       fileSuffix: '.json',
-      contents: JSON.stringify(results, null, 2)
-    }] });
+      contents: JSON.stringify( results, null, 2 )
+    } ] } );
 
     function done(err, data){
       if( !data || !data.write ) return bucket.complete(err);
