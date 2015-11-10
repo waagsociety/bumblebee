@@ -122,6 +122,14 @@ module.exports = {
         socket.on( 'disconnect', function() {
           bucket.clearSubscriptions( socket.id );
         } );
+
+        bucket.onLoadScript( function( path ){
+          socket.emit('loadscript', path);
+        });
+
+        bucket.onCustomMessageOut( function(data){
+          socket.emit('custom', data);
+        } );
       } );
 
       function sendRequestEdit(data) {
@@ -145,6 +153,11 @@ module.exports = {
         var bucket = editbuckets.getBucket( data.socketKey );
         bucket.receiveEdit( 'rectify', data, _.partial( getNextRevision, _, bucket, data ) );
       });
+
+      socket.on( 'custom', function( data ) {
+        var bucket = editbuckets.getBucket( data.socketKey );
+        bucket.customMessageIn( data );
+      } );
     });
 
 

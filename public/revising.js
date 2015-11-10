@@ -34,6 +34,27 @@ function initConnection(){
   socket.on('remove', removeRevision);
 
   socket.on('complete', handleComplete);
+
+  socket.on('loadscript', loadScript);
+
+  socket.on('custom', customMessageHandler);
+
+  window.sendCustomMessage = function(data){
+    socket.emit('custom', { socketKey: socketKey, data: data });
+  };
+}
+
+var customMessageHandlers = {};
+
+function customMessageHandler(message){
+  if(message.type in customMessageHandlers) customMessageHandlers[message.type](message.data);
+  else console.log(message);
+}
+
+function loadScript(path){
+  var script = document.createElement( 'script' );
+  script.src = path;
+  document.head.appendChild(script);
 }
 
 function toggleResultStatus(e){
