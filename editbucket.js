@@ -20,6 +20,7 @@ function Bucket(key){
 	this.subscribers = [];
 	this.loadScriptSubscribers = [];
 	this.customSubscribers = [];
+	this.statusSubscribers = [];
 	this.completeCbs = [];
 	this.outstandingRevisions = [];
 	this.scriptsToLoad = [];
@@ -90,6 +91,17 @@ function Bucket(key){
 
 		this.receiveCb(editType, data, cb);
 	};
+	this.onStatusUpdate = function( fun, socketId ){
+		if( this.status ) fun( this.status );
+		this.statusSubscribers.push( {
+			send: fun,
+			socketId: socketId
+		} );
+	};
+	this.statusUpdate = function( status ){
+		this.status = status.values;
+		this.statusSubscribers.forEach( function( subscriber ){ subscriber.send( status.updated ); } );
+	};
 	this.complete = function(err, data){
 		this.completed = true;
 		if(!this.completeCbs.length) {
@@ -108,7 +120,7 @@ function Bucket(key){
 			while(this.completeCbs.length) {
 				this.completeCbs.shift().send( this.completeErr, this.completeData );
 			}
-			deleteBucket(this.key);
+			//deleteBucket(this.key);
 		}
 	};
 	this.loadScript = function( path ){
@@ -136,7 +148,7 @@ function Bucket(key){
 		this.customMessageInFun( data );
 	};
 	this.clearSubscriptions = function(socketId){
-		['completeCbs', 'subscribers', 'loadScriptSubscribers', 'customSubscribers'].forEach(filterSubscribersList.bind(this));
+		['completeCbs', 'subscribers', 'statusSubscribers', 'loadScriptSubscribers', 'customSubscribers'].forEach(filterSubscribersList.bind(this));
 		var outstandingRevisionIndex = -1,
 				bucket = this;
 

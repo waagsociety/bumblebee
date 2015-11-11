@@ -19,6 +19,7 @@
     "js-yaml": ">=3.3.1",
     "json-stable-stringify": "^1.0.0",
     "jsonschema": ">=1.0.2",
+    "magic-status": "^1.0.3",
     "node-uuid": "^1.4.3",
     "nodeunit": ">=0.9.1",
     "optimist": ">=0.6.1",

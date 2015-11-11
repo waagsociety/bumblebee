@@ -115,13 +115,11 @@ module.exports = {
 
         bucket.addSubscriber( sendRequestEdit, socket.id );
 
-        bucket.onComplete( function( err, files ) {
-          socket.emit( 'complete', { error: err, files: files } );
-        }, socket.id );
+        bucket.onStatusUpdate( sendStatusUpdate, socket.id );
 
-        socket.on( 'disconnect', function() {
-          bucket.clearSubscriptions( socket.id );
-        } );
+        bucket.onComplete( sendComplete, socket.id );
+
+        socket.on( 'disconnect', clearSubscriptions );
 
         bucket.onLoadScript( function( path ){
           socket.emit('loadscript', path);
@@ -130,10 +128,23 @@ module.exports = {
         bucket.onCustomMessageOut( function(data){
           socket.emit('custom', data);
         } );
+
+        function clearSubscriptions() {
+          bucket.clearSubscriptions( socket.id );
+        }
+
       } );
 
       function sendRequestEdit(data) {
         socket.emit( 'requestedit', data );
+      }
+
+      function sendStatusUpdate( data ) {
+        socket.emit( 'status', data );
+      }
+
+      function sendComplete( err, files ) {
+        socket.emit( 'complete', { error: err, files: files } );
       }
 
       function getNextRevision( err, bucket, data ) {

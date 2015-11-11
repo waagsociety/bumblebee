@@ -33,6 +33,8 @@ function initConnection(){
 
   socket.on('remove', removeRevision);
 
+  socket.on('status', displayStatus);
+
   socket.on('complete', handleComplete);
 
   socket.on('loadscript', loadScript);
@@ -483,6 +485,25 @@ function removeRevision(revisionId){
   tbody.appendChild(nextRevision.element);
 
   setSummary();
+}
+
+var progress = {};
+
+function displayStatus( statusUpdate ) {
+  //console.log('status:', statusUpdate);
+  Object.keys( statusUpdate ).forEach( setOnStatus );
+
+  ['sourceItemsAutoProcessed', 'sourceItemsReceived', 'sourceItemsWaiting'].forEach( setWidth );
+
+  function setOnStatus( key ){
+    progress[ key ] = statusUpdate[ key ];
+  }
+
+  function setWidth( key ){
+    if( !statusUpdate[key] && !statusUpdate.sourceItemsTotal ) return;
+
+    document.getElementById( key.toLowerCase() ).style.width = ( progress[ key ] / progress.sourceItemsTotal ) * 100 + '%';
+  }
 }
 
 function handleComplete(results){

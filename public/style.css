@@ -381,3 +381,23 @@ header .emphasis{
 .transformation-result a{
 	margin: 5px;
 }
+
+#status-container{
+	position: relative;
+	width: 100%;
+}
+
+#sourceitemsautoprocessed, #sourceitemsreceived, #sourceitemswaiting {
+	display: inline-block;
+	height: 10px;
+}
+
+#sourceitemsautoprocessed {
+	background-color: #2A9D8F;
+}
+#sourceitemsreceived {
+	background-color: #2FE882;
+}
+#sourceitemswaiting {
+	background-color: #FFE108;
+}
