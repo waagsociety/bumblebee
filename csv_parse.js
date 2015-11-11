@@ -47,6 +47,8 @@ function smartParse( csvData, passedHeader, cb ){
 		} );
 
 		function parseAndStow( values ){
+			if( !values.reduce( function( value, string ){ return value + string.length; }, 0 ) ) return; // skip empty lines
+
 			var lineObject = {};
 
 			values.forEach( stow );
