@@ -25,6 +25,8 @@ function smartParse( csvData, passedHeader, cb ){
 			csvDatalines = ( passedHeader ? csvData : csvData.slice( header.length + 1 ) ),
 			delimiter;
 
+	if( csvDatalines[0] === '\n' ) csvDatalines = csvDatalines.slice( 1 );
+
 	delimiter = getDelimiter(header);
 	header = header.split( delimiter );
 
@@ -45,6 +47,8 @@ function smartParse( csvData, passedHeader, cb ){
 		} );
 
 		function parseAndStow( values ){
+			if( !values.reduce( function( value, string ){ return value + string.length; }, 0 ) ) return; // skip empty lines
+
 			var lineObject = {};
 
 			values.forEach( stow );

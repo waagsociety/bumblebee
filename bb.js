@@ -51,6 +51,7 @@ function transform(dataset, mapping, bucket){
     }
 
     function writeFiles(files, cb){
+      if( !fs.existsSync( './output' ) ) fs.mkdirSync( './output' );
       return async.parallel( files.map( createWriteFunction ), cb );
 
       function createWriteFunction( fileContainer ) {

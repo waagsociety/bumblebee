@@ -298,7 +298,7 @@ function Revision(data){
     return;
 
     function createKeyRow( originalValues, path, key ) {
-      if( key === 'bb_subProperty' || key === 'bb_order' ) return;
+      if( key === 'bb_subProperty' || key === 'bb_order' || key === 'entityType' ) return;
 
       var value = originalValues[key],
           isISODateResults = dateISOStringRegExp.exec( value ),
