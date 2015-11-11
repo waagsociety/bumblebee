@@ -51,16 +51,21 @@ function transform(dataset, mapping, bucket){
     }
 
     function writeFiles(files, cb){
+      var datasetNameSplit = dataset.split('.'),
+          datasetName;
+      datasetNameSplit.pop(); // remove extension
+      datasetName = datasetNameSplit.join('.');
+
       if( !fs.existsSync( './output' ) ) fs.mkdirSync( './output' );
       return async.parallel( files.map( createWriteFunction ), cb );
 
       function createWriteFunction( fileContainer ) {
-        return _.partial( fs.writeFile, './output/' + dataset + fileContainer.fileSuffix, fileContainer.contents );
+        return _.partial( fs.writeFile, './output/' + datasetName + fileContainer.fileSuffix, fileContainer.contents );
       }
     }
 
     function makeOutputLink( fileContainer ){
-      return '/output/' + dataset + fileContainer.fileSuffix;
+      return '/output/' + datasetName + fileContainer.fileSuffix;
     }
 
   }
