@@ -393,11 +393,11 @@ header .emphasis{
 }
 
 #sourceitemsautoprocessed {
-	background-color: #2FE882;
+	background-color: #2A9D8F;
 }
 #sourceitemsreceived {
-	background-color: #FFE108;
+	background-color: #2FE882;
 }
 #sourceitemswaiting {
-	background-color: #DC2C04;
+	background-color: #FFE108;
 }
