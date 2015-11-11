@@ -22,18 +22,17 @@ function smartParse( csvData, passedHeader, cb ){
 	}
 
 	var header = passedHeader || /[^\n^\r\n]+/.exec( csvData )[0],
-			csvDatalines = ( passedHeader ? csvData : csvData.slice( header.length + 1 ) ),
+			csvDatalines = csvData,
 			delimiter;
 
-	if( csvDatalines[0] === '\n' ) csvDatalines = csvDatalines.slice( 1 );
-
 	delimiter = getDelimiter(header);
-	header = header.split( delimiter );
 
 	return csv.parse(csvDatalines, { delimiter: delimiter, relax: true }, postParse );
 
 	function postParse( err, lines ) {
 		if( err ) return cb( err );
+
+		header = lines.shift();
 
 		var objects = [],
 				byKey = {};
