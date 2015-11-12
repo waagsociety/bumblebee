@@ -32,6 +32,12 @@ function transform(dataset, mapping, bucket){
 
   function finishCb( err, results ) {
     if(err) return done(err);
+
+    var datasetNameSplit = dataset.split('.'),
+        datasetName;
+    
+    datasetNameSplit.pop(); // remove extension
+    datasetName = datasetNameSplit.join('.');
     
     console.log('yay, writing output');
 
@@ -51,11 +57,6 @@ function transform(dataset, mapping, bucket){
     }
 
     function writeFiles(files, cb){
-      var datasetNameSplit = dataset.split('.'),
-          datasetName;
-      datasetNameSplit.pop(); // remove extension
-      datasetName = datasetNameSplit.join('.');
-
       if( !fs.existsSync( './output' ) ) fs.mkdirSync( './output' );
       return async.parallel( files.map( createWriteFunction ), cb );
 
