@@ -34,14 +34,14 @@ function smartParse( csvData, passedHeader, cb ){
 
 		header = lines.shift();
 
-		var objects = [],
-				byKey = {};
+		var objects = [];//,
+				//byKey = {};
 
 		lines.forEach(parseAndStow);
 
 		return cb( null, {
 			objects: objects,
-			byKey: byKey,
+			//byKey: byKey,
 			delimiter: delimiter
 		} );
 
@@ -66,8 +66,8 @@ function smartParse( csvData, passedHeader, cb ){
 				}
 				
 				lineObject[key] = value;
-				byKey[ key ] = byKey[ key ] || {};
-				byKey[key][value] = lineObject;
+				//byKey[ key ] = byKey[ key ] || {};
+				//byKey[key][value] = lineObject;
 			}
 		}
 	}

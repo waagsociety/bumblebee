@@ -89,7 +89,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
             entityDefinition = entityContainer[entityName],
             skipCondition = entityDefinition.bb_skipCondition,
             splitCondition = entityDefinition.bb_splitCondition,
-            inputValue;
+            inputValue, split, doubles;
 
         if( skipCondition ){
           inputValue = context.dataByColumnName[ skipCondition.input ];
@@ -97,6 +97,20 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
             ( skipCondition.value && skipCondition.value === inputValue ) ||
             ( skipCondition.regex && new RegExp( skipCondition.regex ).exec( inputValue ) )
           ) return cb( new Error( 'skipCondition' ) );
+        }
+
+        if( splitCondition ){
+          inputValue = context.dataByColumnName[ splitCondition.input ];
+          if(
+            ( splitCondition.value && splitCondition.value === inputValue ) ||
+            ( splitCondition.regex && new RegExp( splitCondition.regex ).exec( inputValue ) )
+          ) {
+            split = splitCondition.newValues || inputValue.split( new RegExp( splitCondition.regex ) );
+            doubles = split.map( createDoubleFromValue );
+
+            context.dataByColumnName = doubles.shift();
+            Array.prototype.push.apply( context.parsedFile.objects, doubles );
+          }
         }
         // set on context for use by transformer
         context.entityName = entityName;
@@ -133,6 +147,12 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
           transformedEntity.entityType = context.entityType;
 
           cb( null, transformedEntity );
+        }
+
+        function createDoubleFromValue( value ){
+          var item = _.extend( {}, context.dataByColumnName );
+          item[ splitCondition.input ] = value;
+          return item;
         }
       }
 

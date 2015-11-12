@@ -283,7 +283,8 @@ function Revision(data){
         'bb_subProperty',
         'bb_order',
         'bb_entityType',
-        'bb_skipCondition'
+        'bb_skipCondition',
+        'bb_splitCondition'
       ].indexOf( key ) > -1 ) return;
 
       var value = originalValues[key],

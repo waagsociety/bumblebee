@@ -18,6 +18,7 @@ function transformEntity( entityName, entity, context, cb ) {
       'bb_subProperty',
       'bb_order',
       'bb_skipCondition',
+      'bb_splitCondition',
       'bb_entityType'
     ].indexOf( fieldName ) > -1 ) return cb();
 
