@@ -22,27 +22,26 @@ function smartParse( csvData, passedHeader, cb ){
 	}
 
 	var header = passedHeader || /[^\n^\r\n]+/.exec( csvData )[0],
-			csvDatalines = ( passedHeader ? csvData : csvData.slice( header.length + 1 ) ),
+			csvDatalines = csvData,
 			delimiter;
 
-	if( csvDatalines[0] === '\n' ) csvDatalines = csvDatalines.slice( 1 );
-
 	delimiter = getDelimiter(header);
-	header = header.split( delimiter );
 
 	return csv.parse(csvDatalines, { delimiter: delimiter, relax: true }, postParse );
 
 	function postParse( err, lines ) {
 		if( err ) return cb( err );
 
-		var objects = [],
-				byKey = {};
+		header = lines.shift();
+
+		var objects = [];//,
+				//byKey = {};
 
 		lines.forEach(parseAndStow);
 
 		return cb( null, {
 			objects: objects,
-			byKey: byKey,
+			//byKey: byKey,
 			delimiter: delimiter
 		} );
 
@@ -67,8 +66,8 @@ function smartParse( csvData, passedHeader, cb ){
 				}
 				
 				lineObject[key] = value;
-				byKey[ key ] = byKey[ key ] || {};
-				byKey[key][value] = lineObject;
+				//byKey[ key ] = byKey[ key ] || {};
+				//byKey[key][value] = lineObject;
 			}
 		}
 	}

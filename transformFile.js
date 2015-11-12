@@ -86,11 +86,35 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
       function createEntity(entityContainer, cb) {
         var keys = Object.keys( entityContainer ),
             entityName = keys[0],
-            entityDefinition = entityContainer[entityName];
+            entityDefinition = entityContainer[entityName],
+            skipCondition = entityDefinition.bb_skipCondition,
+            splitCondition = entityDefinition.bb_splitCondition,
+            inputValue, split, doubles;
 
+        if( skipCondition ){
+          inputValue = context.dataByColumnName[ skipCondition.input ];
+          if( 
+            ( skipCondition.value && skipCondition.value === inputValue ) ||
+            ( skipCondition.regex && new RegExp( skipCondition.regex ).exec( inputValue ) )
+          ) return cb( new Error( 'skipCondition' ) );
+        }
+
+        if( splitCondition ){
+          inputValue = context.dataByColumnName[ splitCondition.input ];
+          if(
+            ( splitCondition.value && splitCondition.value === inputValue ) ||
+            ( splitCondition.regex && new RegExp( splitCondition.regex ).exec( inputValue ) )
+          ) {
+            split = splitCondition.newValues || inputValue.split( new RegExp( splitCondition.regex ) );
+            doubles = split.map( createDoubleFromValue );
+
+            context.dataByColumnName = doubles.shift();
+            Array.prototype.push.apply( context.parsedFile.objects, doubles );
+          }
+        }
         // set on context for use by transformer
         context.entityName = entityName;
-        context.entityType = entityDefinition.entityType || entityName;
+        context.entityType = entityDefinition.bb_entityType || entityName;
 
         return async.waterfall( [
           _.partial( transformEntity, entityName, entityDefinition, context ),
@@ -124,11 +148,26 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
           cb( null, transformedEntity );
         }
+
+        function createDoubleFromValue( value ){
+          var item = _.extend( {}, context.dataByColumnName );
+          item[ splitCondition.input ] = value;
+          return item;
+        }
       }
 
       function entitiesCreated( err, entities ) {
+        if( err ){
+          if( err.message === 'skipCondition' ){
+            status.sourceItemsAutoProcessed++;
+            return cb();
+          } else return cb( err );
+        }
+
         var invalidFound = false;
 
+        if(_.filter(entities, function(en){ return !en }).length) console.log(context.currentEntities, entities);
+        
         entities.forEach(evaluateValidity);
 
         if(!invalidFound){

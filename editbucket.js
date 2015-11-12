@@ -105,12 +105,12 @@ function Bucket(key){
 	this.complete = function(err, data){
 		this.completed = true;
 		if(!this.completeCbs.length) {
-			this.completeErr = err;
+			this.completeErr = err ? err.message : undefined;
 			this.completeData = data;
 			return;
 		}
 		while(this.completeCbs.length) {
-			this.completeCbs.shift().send(err, data);
+			this.completeCbs.shift().send(err ? err.message : undefined, data);
 		}
 		deleteBucket(this.key);
 	};

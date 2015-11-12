@@ -300,7 +300,13 @@ function Revision(data){
     return;
 
     function createKeyRow( originalValues, path, key ) {
-      if( key === 'bb_subProperty' || key === 'bb_order' || key === 'entityType' ) return;
+      if( [
+        'bb_subProperty',
+        'bb_order',
+        'bb_entityType',
+        'bb_skipCondition',
+        'bb_splitCondition'
+      ].indexOf( key ) > -1 ) return;
 
       var value = originalValues[key],
           isISODateResults = dateISOStringRegExp.exec( value ),
