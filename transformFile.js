@@ -86,11 +86,17 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
       function createEntity(entityContainer, cb) {
         var keys = Object.keys( entityContainer ),
             entityName = keys[0],
-            entityDefinition = entityContainer[entityName];
+            entityDefinition = entityContainer[entityName],
+            skipCondition = entityDefinition.bb_skipCondition,
+            splitCondition = entityDefinition.bb_splitCondition,
+            inputValue;
 
-        if( entityDefinition.bb_skipCondition ){
-          var value = context.dataByColumnName[ entityDefinition.bb_skipCondition.input ];
-          if( value === entityDefinition.bb_skipCondition.value ) return cb( new Error( 'skipCondition' ) );
+        if( skipCondition ){
+          inputValue = context.dataByColumnName[ skipCondition.input ];
+          if( 
+            ( skipCondition.value && skipCondition.value === inputValue ) ||
+            ( skipCondition.regex && new RegExp( skipCondition.regex ).exec( inputValue ) )
+          ) return cb( new Error( 'skipCondition' ) );
         }
         // set on context for use by transformer
         context.entityName = entityName;
@@ -137,6 +143,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
             return cb();
           } else return cb( err );
         }
+
         var invalidFound = false;
 
         if(_.filter(entities, function(en){ return !en }).length) console.log(context.currentEntities, entities);
