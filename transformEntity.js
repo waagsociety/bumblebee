@@ -14,7 +14,11 @@ function transformEntity( entityName, entity, context, cb ) {
   return async.map( Object.keys( entity ), transformEntityField, fieldsTransformed );
 
   function transformEntityField( fieldName, cb, container, parentFieldName ) {
-    if( fieldName === 'bb_subProperty' || fieldName === 'bb_order' ) return cb();
+    if( [
+      'bb_subProperty',
+      'bb_order',
+      'bb_skipCondition'
+    ].indexOf( fieldName ) > -1 ) return cb();
 
     var field = entity[fieldName] || container[fieldName];
     if(!field.bb_subProperty) return transformField( fieldName, field, context, cb );

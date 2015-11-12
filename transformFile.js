@@ -88,6 +88,10 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
             entityName = keys[0],
             entityDefinition = entityContainer[entityName];
 
+        if( entityDefinition.bb_skipCondition ){
+          var value = context.dataByColumnName[ entityDefinition.bb_skipCondition.input ];
+          if( value === entityDefinition.bb_skipCondition.value ) return cb( new Error( 'skipCondition' ) );
+        }
         // set on context for use by transformer
         context.entityName = entityName;
         context.entityType = entityDefinition.entityType || entityName;
@@ -127,8 +131,16 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
       }
 
       function entitiesCreated( err, entities ) {
+        if( err ){
+          if( err.message === 'skipCondition' ){
+            status.sourceItemsAutoProcessed++;
+            return cb();
+          } else return cb( err );
+        }
         var invalidFound = false;
 
+        if(_.filter(entities, function(en){ return !en }).length) console.log(context.currentEntities, entities);
+        
         entities.forEach(evaluateValidity);
 
         if(!invalidFound){
