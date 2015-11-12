@@ -282,7 +282,7 @@ function Revision(data){
       if( [
         'bb_subProperty',
         'bb_order',
-        'entityType',
+        'bb_entityType',
         'bb_skipCondition'
       ].indexOf( key ) > -1 ) return;
 

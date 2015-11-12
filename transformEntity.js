@@ -17,7 +17,8 @@ function transformEntity( entityName, entity, context, cb ) {
     if( [
       'bb_subProperty',
       'bb_order',
-      'bb_skipCondition'
+      'bb_skipCondition',
+      'bb_entityType'
     ].indexOf( fieldName ) > -1 ) return cb();
 
     var field = entity[fieldName] || container[fieldName];

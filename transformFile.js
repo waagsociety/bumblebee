@@ -94,7 +94,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
         }
         // set on context for use by transformer
         context.entityName = entityName;
-        context.entityType = entityDefinition.entityType || entityName;
+        context.entityType = entityDefinition.bb_entityType || entityName;
 
         return async.waterfall( [
           _.partial( transformEntity, entityName, entityDefinition, context ),
