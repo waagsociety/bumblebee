@@ -167,7 +167,7 @@ module.exports = {
 
       socket.on( 'custom', function( data ) {
         var bucket = editbuckets.getBucket( data.socketKey );
-        bucket.customMessageIn( data );
+        bucket.customMessageIn( data, socket.emit.bind( socket, 'custom' ) );
       } );
     });
 

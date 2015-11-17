@@ -41,8 +41,10 @@ function initConnection(){
 
   socket.on('custom', customMessageHandler);
 
-  window.sendCustomMessage = function(data){
-    socket.emit('custom', { socketKey: socketKey, data: data });
+  window.sendCustomMessage = function( type, data ){
+    var transportObject = { socketKey: socketKey, type: type };
+    if( data !== undefined ) transportObject.data = data;
+    socket.emit( 'custom', transportObject );
   };
 }
 
@@ -501,6 +503,10 @@ function displayStatus( statusUpdate ) {
 
   ['sourceItemsAutoProcessed', 'sourceItemsReceived', 'sourceItemsWaiting'].forEach( setWidth );
 
+  if( progress.sourceItemsTotal === progress.sourceItemsReceived + progress.sourceItemsAutoProcessed ){
+    document.querySelector('#pending-revisions table').remove();
+  }
+
   function setOnStatus( key ){
     progress[ key ] = statusUpdate[ key ];
   }
@@ -522,16 +528,15 @@ function handleComplete(results){
   var hrefs = results.files.map( createFileLinks ),
       lis = hrefs.map(embedInLi);
 
-  var table = document.querySelector('#pending-revisions > table'),
-      parentNode = table.parentNode;
+  var pendingRevisions = document.querySelector('#pending-revisions');
 
-  parentNode.innerHTML = '';
+  pendingRevisions.innerHTML = '';
   document.querySelector('header.transformation-header h1').innerHTML = 'Transformation complete!';
 
   var ul = document.createElement('ul');
   lis.forEach( ul.appendChild.bind(ul) );
   
-  parentNode.appendChild(ul);
+  pendingRevisions.appendChild(ul);
 
   return;
 

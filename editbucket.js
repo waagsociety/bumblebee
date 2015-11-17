@@ -24,6 +24,7 @@ function Bucket(key){
 	this.completeCbs = [];
 	this.outstandingRevisions = [];
 	this.scriptsToLoad = [];
+	this.customMessageInHandlers = {};
 }
 
 (function(){
@@ -141,11 +142,13 @@ function Bucket(key){
 			subscriber.send( data );
 		});
 	};
-	this.onCustomMessageIn = function( fun ){
-		this.customMessageInFun = fun;
+	this.onCustomMessageIn = function( type, fun ){
+		this.customMessageInHandlers[ type ] = fun;
 	};
-	this.customMessageIn = function( data ){
-		this.customMessageInFun( data );
+	this.customMessageIn = function( data, reply ){
+		var handler = this.customMessageInHandlers[ data.type ];
+		if( handler ) handler( data.data, reply );
+		else console.log('no handler for ' + data.type + ' type of message, message:', data.data );
 	};
 	this.clearSubscriptions = function(socketId){
 		['completeCbs', 'subscribers', 'statusSubscribers', 'loadScriptSubscribers', 'customSubscribers'].forEach(filterSubscribersList.bind(this));
