@@ -4,6 +4,7 @@
   "description": "Human-assisted ETL",
   "main": "index.js",
   "dependencies": {
+    "astackrunner": "^1.0.0",
     "async": "^1.4.2",
     "async-maphash": "^1.0.1",
     "body-parser": "^1.13.2",

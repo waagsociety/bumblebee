@@ -43,8 +43,6 @@ function Bucket(key){
 	this.requestEdit = function(data){
 		this.requestBus.push(data);
 
-		if(!this.addCb) return;
-
 		this.sendItems();
 	};
 	this.sendItems = function(){

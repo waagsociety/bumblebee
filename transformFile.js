@@ -1,6 +1,7 @@
 var _ = require( 'underscore' ),
     fs = require('fs'),
     async = require( 'async' ),
+    aStackRunner = require('astackrunner'),
     dumbstore = require('dumbstore'),
     YAML = require( 'js-yaml' ),
     stableStringify = require('json-stable-stringify'),
@@ -22,10 +23,12 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
       },
       filesContents = {},
       context = {},
+      csvStack = [],
       allEntities = [],
       entitiesWithRevisionPending = {},
       revisedEntitiesStore = dumbstore.getStore( 'KeyValueStore', 'revised-entities' ),
       collectedRevisionsCb,
+      stackRunner,
       status = magicStatus({
         sourceItemsTotal: 0,
         sourceItemsAutoProcessed: 0,
@@ -75,7 +78,14 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
   }
 
   function extractEntities( context, cb ) {
-    return async.eachSeries( context.parsedFile.objects, extractEntitiesFromObject, cb );
+    stackRunner = aStackRunner.create( 1 )
+      .add( context.parsedFile.objects )
+      .execute( extractEntitiesFromObject )
+      .onEmpty( function( err ) {
+        if( !Object.keys( entitiesWithRevisionPending ).length ) return collectedRevisionsCb;
+      } );
+
+    return cb();
 
     function extractEntitiesFromObject( object, cb ) {
       context.dataByColumnName = object;
@@ -166,7 +176,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
         var invalidFound = false;
 
-        if(_.filter(entities, function(en){ return !en }).length) console.log(context.currentEntities, entities);
+        if( _.filter( entities, function( entity ){ return !entity } ).length ) console.log( context.currentEntities, entities );
         
         entities.forEach(evaluateValidity);
 
@@ -265,8 +275,6 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
   }
 
   function collectRevisedEntities( cb ) {
-    if( !Object.keys( entitiesWithRevisionPending ).length ) return cb();
-
     collectedRevisionsCb = cb;
   }
 
@@ -315,9 +323,10 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
       
       delete entitiesWithRevisionPending[data.revisionId];
 
+      reEvaluateEntitiesWithRevisionPending();
     }
 
-    if( !Object.keys( entitiesWithRevisionPending ).length ){
+    if( !Object.keys( entitiesWithRevisionPending ).length && !stackRunner.length ) {
       collectedRevisionsCb();
     }
 
@@ -344,6 +353,19 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
       return entities[entityName];
     }
   }
+
+  function reEvaluateEntitiesWithRevisionPending(){
+    status.sourceItemsWaiting -= bucket.requestBus.length;
+
+    // stackrunner will continue automatically when items are added
+    stackRunner.add( bucket.requestBus.map( function( item ){ return item.sourceData; } ) );
+
+    // clear all items currently in bus
+    bucket.requestBus = [];
+
+    return;
+  }
+
 }
 
 function setReceiveHandlers( handlers ){
