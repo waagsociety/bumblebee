@@ -401,3 +401,19 @@ header .emphasis{
 #sourceitemswaiting {
 	background-color: #FFE108;
 }
+
+#numerical-status-container span {
+	margin: 5px;
+}
+
+#numerical-sourceitemsautoprocessed {
+	color: #2A9D8F;
+}
+
+#numerical-sourceitemsreceived {
+	color: #2FE882;
+}
+
+#numerical-sourceitemswaiting {
+	color: #FFE108;
+}

@@ -507,14 +507,20 @@ function displayStatus( statusUpdate ) {
     document.querySelector('#pending-revisions table').remove();
   }
 
+  document.getElementById('percentage-done').innerHTML = ( ( ( progress.sourceItemsAutoProcessed + ( progress.sourceItemsReceived || 0 ) ) / progress.sourceItemsTotal ) * 100 ).toFixed( 0 ) + '%';
+
+  return;
+
   function setOnStatus( key ){
     progress[ key ] = statusUpdate[ key ];
   }
 
   function setWidth( key ){
     if( !statusUpdate[key] && !statusUpdate.sourceItemsTotal ) return;
+    var value = progress[ key ] || 0;
 
-    document.getElementById( key.toLowerCase() ).style.width = ( progress[ key ] / progress.sourceItemsTotal ) * 100 + '%';
+    document.getElementById( key.toLowerCase() ).style.width = ( value / progress.sourceItemsTotal ) * 100 + '%';
+    document.getElementById( 'numerical-' + key.toLowerCase() ).innerHTML = value;
   }
 }
 

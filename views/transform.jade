@@ -16,10 +16,15 @@ block content
 				| with 
 				span.emphasis= mapping
 			// p= env.text.transform.topExplanation
-			div#status-container
+			#status-container
 				#sourceitemsautoprocessed
 				#sourceitemsreceived
 				#sourceitemswaiting
+			#numerical-status-container
+				span#numerical-sourceitemsautoprocessed
+				span#numerical-sourceitemsreceived
+				span#numerical-sourceitemswaiting
+				span#percentage-done
 		span#socketkey(data-socketkey=socketKey)= socketKey
 		section#pending-revisions
 			table
