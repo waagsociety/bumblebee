@@ -23,7 +23,6 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
       },
       filesContents = {},
       context = {},
-      csvStack = [],
       allEntities = [],
       entitiesWithRevisionPending = {},
       revisedEntitiesStore = dumbstore.getStore( 'KeyValueStore', 'revised-entities' ),
@@ -82,7 +81,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
       .add( context.parsedFile.objects )
       .execute( extractEntitiesFromObject )
       .onEmpty( function( err ) {
-        if( !Object.keys( entitiesWithRevisionPending ).length ) return collectedRevisionsCb;
+        if( !Object.keys( entitiesWithRevisionPending ).length ) return collectedRevisionsCb();
       } );
 
     return cb();
@@ -103,7 +102,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
         if( skipCondition ){
           inputValue = context.dataByColumnName[ skipCondition.input ];
-          if( 
+          if(
             ( skipCondition.value && skipCondition.value === inputValue ) ||
             ( skipCondition.regex && new RegExp( skipCondition.regex ).exec( inputValue ) )
           ) return cb( new Error( 'skipCondition' ) );
@@ -275,6 +274,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
   }
 
   function collectRevisedEntities( cb ) {
+    if( !stackRunner.length && !Object.keys( entitiesWithRevisionPending ).length ) return cb();
     collectedRevisionsCb = cb;
   }
 
