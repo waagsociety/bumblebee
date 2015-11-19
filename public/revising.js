@@ -498,13 +498,16 @@ function removeRevision(revisionId){
 var progress = {};
 
 function displayStatus( statusUpdate ) {
+  var revisionsTable;
+
   //console.log('status:', statusUpdate);
   Object.keys( statusUpdate ).forEach( setOnStatus );
 
   ['sourceItemsAutoProcessed', 'sourceItemsReceived', 'sourceItemsWaiting'].forEach( setWidth );
 
   if( progress.sourceItemsTotal === progress.sourceItemsReceived + progress.sourceItemsAutoProcessed ){
-    document.querySelector('#pending-revisions table').remove();
+    revisionsTable = document.querySelector('#pending-revisions table');
+    if( revisionsTable) revisionsTable.remove();
   }
 
   document.getElementById('percentage-done').innerHTML = ( ( ( progress.sourceItemsAutoProcessed + ( progress.sourceItemsReceived || 0 ) ) / progress.sourceItemsTotal ) * 100 ).toFixed( 0 ) + '%';
@@ -516,7 +519,7 @@ function displayStatus( statusUpdate ) {
   }
 
   function setWidth( key ){
-    if( !statusUpdate[key] && !statusUpdate.sourceItemsTotal ) return;
+    if( statusUpdate[key] === undefined && !statusUpdate.sourceItemsTotal ) return;
     var value = progress[ key ] || 0;
 
     document.getElementById( key.toLowerCase() ).style.width = ( value / progress.sourceItemsTotal ) * 100 + '%';
