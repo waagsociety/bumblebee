@@ -39,7 +39,7 @@ function transform(dataset, mapping, bucket){
     datasetNameSplit.pop(); // remove extension
     datasetName = datasetNameSplit.join('.');
     
-    console.log('yay, writing output');
+    console.log('all converted');
 
     if( postProcessor ){
       return postProcessor( results, bucket, done );
