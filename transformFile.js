@@ -363,6 +363,16 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
   function reEvaluateEntitiesWithRevisionPending(){
     status.sourceItemsWaiting -= bucket.requestBus.length;
 
+    // dump the old entitiesWithRevisionPending or it will overflow and cause memory issues
+    var newEntitiesWithRevisionsPending = {};
+
+    bucket.outstandingRevisions.forEach( function( outstandingRevision ) {
+      var revisionId = outstandingRevision.item.revisionId;
+      newEntitiesWithRevisionsPending[ revisionId ] = entitiesWithRevisionPending[ revisionId ];
+    } );
+
+    entitiesWithRevisionPending = newEntitiesWithRevisionsPending;
+
     // stackrunner will continue automatically when items are added
     stackRunner.add( bucket.requestBus.map( function( item ){ return item.sourceData; } ) );
 
