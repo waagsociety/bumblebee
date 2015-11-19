@@ -81,7 +81,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
       .add( context.parsedFile.objects )
       .execute( extractEntitiesFromObject )
       .onEmpty( function( err ) {
-        if( !Object.keys( entitiesWithRevisionPending ).length ) return collectedRevisionsCb();
+        collectedRevisionsCb( err );
       } );
 
     return cb();
@@ -105,7 +105,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
           if(
             ( skipCondition.value && skipCondition.value === inputValue ) ||
             ( skipCondition.regex && new RegExp( skipCondition.regex ).exec( inputValue ) )
-          ) return cb( new Error( 'skipCondition' ) );
+          ) return cb();
         }
 
         if( splitCondition ){
@@ -189,7 +189,10 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
           // first check revised entities store for previously revised entities with same csv data
           var stored = revisedEntitiesStore.get( stableStringify( entities[ 0 ].sourceData ) );
-          if( stored === 'rejected' ) return cb();
+          if( stored === 'rejected' ) {
+            status.sourceItemsAutoProcessed++;
+            return cb();
+          }
           if( stored ){
             stored = JSON.parse( stored );
             allEntities.push.apply( allEntities, stored );
@@ -275,7 +278,12 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
   function collectRevisedEntities( cb ) {
     if( !stackRunner.length && !Object.keys( entitiesWithRevisionPending ).length ) return cb();
-    collectedRevisionsCb = cb;
+    
+    collectedRevisionsCb = function( err ) {
+      if( !Object.keys( entitiesWithRevisionPending ).length && !stackRunner.length ) {
+        cb( err );
+      }
+    };
   }
 
   function receiveEdit(editType, data, cb, afterReceivedSubscriber ) {
@@ -326,9 +334,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
       reEvaluateEntitiesWithRevisionPending();
     }
 
-    if( !Object.keys( entitiesWithRevisionPending ).length && !stackRunner.length ) {
-      collectedRevisionsCb();
-    }
+    collectedRevisionsCb();
 
     return cb();
 
