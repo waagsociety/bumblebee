@@ -25,7 +25,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
       context = {},
       allEntities = [],
       entitiesWithRevisionPending = {},
-      revisedEntitiesStore = dumbstore.getStore( 'KeyValueStore', 'revised-entities' ),
+      revisedEntitiesStore = dumbstore.getStore( 'KeyValueStore', 'revised-entities-' + path_data.split('/').pop() + '-' + path_mapping.split('/').pop() ),
       collectedRevisionsCb,
       stackRunner,
       status = magicStatus({
