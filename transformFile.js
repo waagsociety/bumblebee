@@ -105,7 +105,10 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
           if(
             ( skipCondition.value && skipCondition.value === inputValue ) ||
             ( skipCondition.regex && new RegExp( skipCondition.regex ).exec( inputValue ) )
-          ) return cb();
+          ) {
+            status.sourceItemsAutoProcessed++;
+            return cb();
+          }
         }
 
         if( splitCondition ){
@@ -119,6 +122,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
             context.dataByColumnName = doubles.shift();
             stackRunner.add( doubles );
+            status.sourceItemsTotal += doubles.length;
           }
         }
         // set on context for use by transformer
