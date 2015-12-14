@@ -118,7 +118,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
             doubles = split.map( createDoubleFromValue );
 
             context.dataByColumnName = doubles.shift();
-            Array.prototype.push.apply( context.parsedFile.objects, doubles );
+            stackRunner.add( doubles );
           }
         }
         // set on context for use by transformer
@@ -150,7 +150,6 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
           
           if(!transformedEntity.isValid) transformedEntity.validationErrors = validateResult.errors;
 
-          transformedEntity.sourceData = object;
           transformedEntity.schema = schema;
           transformedEntity.mapping = entityDefinition;
           transformedEntity.optional = entityDefinition.optional;
@@ -214,7 +213,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
           var revisionId = uuid.v4(),
               transportContainer = {
                 revisionId: revisionId,
-                sourceData: entities[0].sourceData, // we take the csv data from the first entity because it's the same for all of them
+                sourceData: context.dataByColumnName, // we take the csv data from the first entity because it's the same for all of them
                 entities: entities.map( createTransportableEntity )
               };
 
@@ -234,7 +233,6 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
         }
 
         function stripExtraProps( entity ){
-          delete entity.sourceData;
           delete entity.schema;
           delete entity.mapping;
           delete entity.validationErrors;
@@ -250,7 +248,6 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
               errors = {},
               validationErrors = entity.validationErrors;
 
-          delete entity.sourceData;
           delete entity.schema;
           delete entity.mapping;
           delete entity.validationErrors;
