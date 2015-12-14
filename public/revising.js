@@ -315,7 +315,8 @@ function Revision(data){
           propertyPath = path ? path + '.' + key : key,
           schemaProperty = resolveOnObject(schema.properties, propertyPath);
 
-      if(typeof value === 'object' && value !== null ){
+      // recurse into subprop if it is a true subproperty
+      if(typeof value === 'object' && value !== null && ( schemaProperty && ( !schemaProperty.type || schemaProperty.type !== 'string' ) ) ){
         return Object.keys( resolveOnObject( entity.mapping, propertyPath ) ).sort( function( a, b ) {
           return a.bb_order - b.bb_order;
         }).forEach( createKeyRow.bind( null, value, propertyPath ) );
