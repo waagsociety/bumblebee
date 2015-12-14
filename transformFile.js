@@ -153,6 +153,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
           transformedEntity.sourceData = object;
           transformedEntity.schema = schema;
           transformedEntity.mapping = entityDefinition;
+          transformedEntity.optional = entityDefinition.optional;
           transformedEntity.entityType = context.entityType;
 
           cb( null, transformedEntity );
@@ -173,11 +174,16 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
           } else return cb( err );
         }
 
-        var invalidFound = false;
+        var invalidFound = false,
+            invalidOptionalEntities = [];
 
-        if( _.filter( entities, function( entity ){ return !entity } ).length ) console.log( context.currentEntities, entities );
+        if( _.filter( entities, function( entity ){ return !entity; } ).length ) console.log( context.currentEntities, entities );
         
         entities.forEach(evaluateValidity);
+
+        while( invalidOptionalEntities.length ) {
+          entities.splice( entities.indexOf( invalidOptionalEntities.pop() ), 1 );
+        }
 
         if(!invalidFound){
           allEntities.push.apply( allEntities, entities.map( stripExtraProps ) );
@@ -189,10 +195,12 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
           // first check revised entities store for previously revised entities with same csv data
           var stored = revisedEntitiesStore.get( stableStringify( entities[ 0 ].sourceData ) );
+
           if( stored === 'rejected' ) {
             status.sourceItemsAutoProcessed++;
             return cb();
           }
+
           if( stored ){
             stored = JSON.parse( stored );
             allEntities.push.apply( allEntities, stored );
@@ -219,8 +227,9 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
         return cb();
 
-        function evaluateValidity( entity ){
-          invalidFound = invalidFound || !entity.isValid;
+        function evaluateValidity( entity, index ){
+          if( !entity.optional ) invalidFound = invalidFound || !entity.isValid;
+          else if( !entity.isValid ) invalidOptionalEntities.push( entity );
           delete entity.isValid;
         }
 
