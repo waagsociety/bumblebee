@@ -12,8 +12,17 @@ var revisionHandlers = { '#pending-revisions': { DOMNodeInserted: requestAdded }
       '.resultItem.valid, .resultItem.approved': { click: toggleResultStatus },
       '.reject-all': { click: rejectAll },
       '.approve-all': { click: approveAll }
+    },
+    socketHandlers = {
+      'requestedit': createRevisionJob,
+      'remove': removeRevision,
+      'status': displayStatus,
+      'complete': handleComplete,
+      'loadscript': loadScript,
+      'custom': customMessageHandler
     };
 
+// copy revisionHandlers over to eventHandlers
 Object.keys( revisionHandlers ).forEach( function( selector ){
   eventHandlers[selector] = revisionHandlers[selector];
 } );
@@ -29,17 +38,8 @@ function initConnection(){
   
   socket.emit('socketkey', socketKey);
 
-  socket.on('requestedit', createRevisionJob);
-
-  socket.on('remove', removeRevision);
-
-  socket.on('status', displayStatus);
-
-  socket.on('complete', handleComplete);
-
-  socket.on('loadscript', loadScript);
-
-  socket.on('custom', customMessageHandler);
+  // bind socket handlers
+  socketHandlers.forEach( socket.on.bind( socket ) );
 
   window.sendCustomMessage = function( type, data ){
     var transportObject = { socketKey: socketKey, type: type };
