@@ -363,7 +363,7 @@ button, .btn{
 	opacity: 0.5;
 }
 
-input[isvalid=false] {
+input[isvalid=false], select[isvalid=false] {
 	background: #ffd7ce;
 }
 
