@@ -92,3 +92,20 @@ function resolveOnObject(object, path, value){
   return ref[part];
 }
 
+function unsetOnObject( object, path ) {
+  var parts = path.split( '.' ),
+      ref = object,
+      part;
+
+  while( parts.length > 1 && ref){
+    part = parts.shift();
+    ref = ref[part];
+  }
+
+  if(!ref) throw('declareOnObject: object does not contain ' + part + ', full path given: ' + path);
+
+  part = parts.shift();
+
+  return delete ref[part];
+}
+

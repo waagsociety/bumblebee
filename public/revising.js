@@ -96,11 +96,16 @@ function handleModifyKeyUp(e){
       schemaProperty = resolveOnObject( entity.schema.properties, this.dataset.path ),
       value = this.value;
 
-  if( schemaProperty && schemaProperty.type === 'number' ) value = +value;
-  
-  resultValueElement.innerHTML = value;
+  if( value ) {
+    if( schemaProperty && schemaProperty.type === 'number' ) value = +value;
+    
+    resultValueElement.innerHTML = value;
 
-  resolveOnObject(entity.currentValues, this.dataset.path, value );
+    resolveOnObject( entity.currentValues, this.dataset.path, value );
+  } else {
+    unsetOnObject( entity.currentValues, this.dataset.path );
+  }
+
 
   validateItem( entity.currentValues, entity.schema, this, resultItem );
 }
