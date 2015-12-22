@@ -10,8 +10,9 @@ exports.transform = function (context, data, argument) {
 	}
 	
 	if( index < 0 ) {
-		index = Math.min( data.length + index, data.length );
-	}
+		index = Math.max( data.length + index, 0);
+	} 
+  index = Math.min( index, data.length - 1 );
 
 	item = data[index];
 	
