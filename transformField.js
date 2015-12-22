@@ -78,9 +78,8 @@ function transformField( fieldName, field, context, cb ) {
   }
 
   function passData(err){
-    if(!data) console.log( 'no data' );
-
     var fieldContainer = {};
+    
     fieldContainer[fieldName] = data;
 
     cb( err, fieldContainer );
