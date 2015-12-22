@@ -202,9 +202,10 @@ function Revision(data){
       modifyItems = document.createElement( 'ul' ),
       resultItems = document.createElement( 'ul' ),
       rejectAllButton = document.createElement( 'button' ),
-      approveAllButton = document.querySelector( 'button.approve-all' ),
-      errorContainer = document.createElement( 'div' ),
-      errorTitle = document.createElement( 'h4' );
+      approveAllButton = document.querySelector( 'button.approve-all' );
+
+  // var errorContainer = document.createElement( 'div' ),
+  //     errorTitle = document.createElement( 'h4' );
 
   approveAllButton.setAttribute( 'disabled', true );
 
@@ -229,12 +230,12 @@ function Revision(data){
 
   revisionItems[data.revisionId] = data;
 
-  if( errorContainer.children ){
-    errorTitle.innerHTML = text.transform.thereAreErrors;
-    errorContainer.classList.add( 'error-container' );
-    errorContainer.insertBefore( errorTitle, errorContainer.firstChild );
-    sourceTableCell.appendChild( errorContainer );
-  }
+  // if( errorContainer.children ){
+  //   errorTitle.innerHTML = text.transform.thereAreErrors;
+  //   errorContainer.classList.add( 'error-container' );
+  //   errorContainer.insertBefore( errorTitle, errorContainer.firstChild );
+  //   sourceTableCell.appendChild( errorContainer );
+  // }
 
   return;
 
@@ -291,22 +292,22 @@ function Revision(data){
 
     properties.forEach( createKeyRow.bind( null, entity.originalValues, '' ) );
 
-    if( /*( entity.errors && Object.keys( entity.errors ).length ) ||*/ ( entity.validationErrors && entity.validationErrors.length ) ){
-      errorItem = document.createElement( 'div' );
-      errorItem.className = 'errorItem';
-      errorTitle = document.createElement( 'h5' );
-      errorTitle.innerText = schema.description;
-      errorItem.appendChild( errorTitle );
+    // if( /*( entity.errors && Object.keys( entity.errors ).length ) ||*/ ( entity.validationErrors && entity.validationErrors.length ) ){
+    //   errorItem = document.createElement( 'div' );
+    //   errorItem.className = 'errorItem';
+    //   errorTitle = document.createElement( 'h5' );
+    //   errorTitle.innerText = schema.description;
+    //   errorItem.appendChild( errorTitle );
       
-      errorTable = document.createElement( 'table' );
+    //   errorTable = document.createElement( 'table' );
 
-      if( entity.errors ) Object.keys( entity.errors ).forEach( addTransformationError );
-      if( entity.validationErrors && entity.validationErrors.length ) entity.validationErrors.forEach( addValidationError );
+    //   if( entity.errors ) Object.keys( entity.errors ).forEach( addTransformationError );
+    //   if( entity.validationErrors && entity.validationErrors.length ) entity.validationErrors.forEach( addValidationError );
 
-      errorItem.appendChild( errorTable );
+    //   errorItem.appendChild( errorTable );
 
-      errorContainer.appendChild( errorItem );
-    }
+    //   errorContainer.appendChild( errorItem );
+    // }
 
     return;
 
