@@ -132,11 +132,13 @@ function validateItem( values, schema, input, resultItem ){
 
   var errors = validator.getLastErrors();
 
-  if( !errors ) input.removeAttribute( 'isvalid' );
-  else{
-    errors.forEach( function( error ){
-      if( error.path.slice( 2 ) === input.dataset.path ) input.setAttribute( 'isvalid', false );
-    } );
+  if( input ) {
+    if( !errors ) input.removeAttribute( 'isvalid' );
+    else{
+      errors.forEach( function( error ){
+        if( error.path.slice( 2 ) === input.dataset.path ) input.setAttribute( 'isvalid', false );
+      } );
+    }
   }
 
   updateApproveAllButton();
@@ -167,7 +169,16 @@ function createRevisionJob(data){
   if(tbody.children.length < maxRevisionsToShow) {
     var revision = new Revision(data);
     tbody.appendChild(revision.element);
-  } else {
+
+    // validate because maybe they are valid already (caused by markNextAsInvalid)
+    Object.keys( revisingEntities ).forEach( function( key ) {
+      var entity = revisingEntities[ key ];
+      console.log( entity );
+      validateItem( entity.currentValues, entity.schema, null, document.querySelector( '[data-key="' + key + '"]' ) );
+    } );
+
+    updateApproveAllButton();
+  } else { //does not happen anymore
     revisionsBuffer.push(data);
     setSummary();
   }
@@ -209,9 +220,7 @@ function Revision(data){
   element.appendChild( resultTableCell );
 
   modifyTableCell.appendChild( modifyItems );
-
   resultTableCell.appendChild( resultItems );
-
 
   element.dataset.revisionId = data.revisionId;
   
@@ -247,8 +256,9 @@ function Revision(data){
 
   function createModifyFieldsAndResultForEntity( entity, i ){
     var schema = entity.schema,
+        mapping = entity.mapping,
         key = entity.key,
-        properties = Object.keys( entity.mapping ).sort( function( a, b ) {
+        properties = Object.keys( mapping ).sort( function( a, b ) {
           return a.bb_order - b.bb_order;
         } ),
         modifyItem = document.createElement('li'),
@@ -263,7 +273,7 @@ function Revision(data){
 
     modifyItem.appendChild(modifyTitle);
     resultItem.appendChild(resultTitle);
-    resultTitle.innerHTML = modifyTitle.innerHTML = schema.description;
+    resultTitle.innerHTML = modifyTitle.innerHTML = mapping.bb_description || schema.description;
 
     modifyItem.appendChild(modifyTable);
     resultItem.appendChild(resultTable);
@@ -307,7 +317,8 @@ function Revision(data){
         'bb_order',
         'bb_entityType',
         'bb_skipCondition',
-        'bb_splitCondition'
+        'bb_splitCondition',
+        'bb_description'
       ].indexOf( key ) > -1 ) return;
 
       var value = originalValues[key],
@@ -317,7 +328,7 @@ function Revision(data){
 
       // recurse into subprop if it is a true subproperty
       if(typeof value === 'object' && value !== null && ( schemaProperty && ( !schemaProperty.type || schemaProperty.type !== 'string' ) ) ){
-        return Object.keys( resolveOnObject( entity.mapping, propertyPath ) ).sort( function( a, b ) {
+        return Object.keys( resolveOnObject( mapping, propertyPath ) ).sort( function( a, b ) {
           return a.bb_order - b.bb_order;
         }).forEach( createKeyRow.bind( null, value, propertyPath ) );
         return Object.keys( value ).forEach( createKeyRow.bind( null, value, propertyPath ) );

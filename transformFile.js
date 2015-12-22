@@ -90,34 +90,36 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
       context.dataByColumnName = object;
       context.currentEntities = {};
 
+      var skipRecord;
+
+      context.mapping.forEach( handleSkipAndSplitConditions );
+
+      if( skipRecord ) return cb();
+
       return async.mapSeries( context.mapping, createEntity, entitiesCreated );
 
-      function createEntity(entityContainer, cb) {
+      function handleSkipAndSplitConditions( entityContainer ) {
         var keys = Object.keys( entityContainer ),
             entityName = keys[0],
             entityDefinition = entityContainer[entityName],
             skipCondition = entityDefinition.bb_skipCondition,
             splitCondition = entityDefinition.bb_splitCondition,
-            inputValue, split, doubles;
-
-        if( skipCondition ){
-          inputValue = context.dataByColumnName[ skipCondition.input ];
-          if(
-            ( skipCondition.value && skipCondition.value === inputValue ) ||
-            ( skipCondition.regex && new RegExp( skipCondition.regex ).exec( inputValue ) )
-          ) {
-            status.sourceItemsAutoProcessed++;
-            return cb();
-          }
-        }
+            inputValue, split, doubles,
+            valueMatches, regexMatches;
 
         if( splitCondition ){
           inputValue = context.dataByColumnName[ splitCondition.input ];
-          if(
-            ( splitCondition.value && splitCondition.value === inputValue ) ||
-            ( splitCondition.regex && new RegExp( splitCondition.regex ).exec( inputValue ) )
-          ) {
+          
+          valueMatches = splitCondition.value && splitCondition.value === inputValue;
+          regexMatches = splitCondition.regex && new RegExp( splitCondition.regex ).exec( inputValue );
+
+          if( valueMatches || regexMatches ) {
             split = splitCondition.newValues || inputValue.split( new RegExp( splitCondition.regex ) );
+
+            if( splitCondition.unique ) {
+              split = split.filter( indexMatchesPredicate );
+            }
+
             doubles = split.map( createDoubleFromValue );
 
             context.dataByColumnName = doubles.shift();
@@ -125,6 +127,36 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
             status.sourceItemsTotal += doubles.length;
           }
         }
+
+        if( skipCondition ){
+          inputValue = context.dataByColumnName[ skipCondition.input ];
+
+          valueMatches = skipCondition.value && ( typeof skipCondition.value === 'object' ? skipCondition.value.indexOf( inputValue ) > -1 : skipCondition.value === inputValue );
+          regexMatches = skipCondition.regex && new RegExp( skipCondition.regex ).exec( inputValue );
+
+          if( valueMatches || regexMatches ) {
+            status.sourceItemsAutoProcessed++;
+            skipRecord = true;
+            return;
+          }
+        }
+
+        function indexMatchesPredicate( value, i, array ) {
+          return array.indexOf( value ) === i;
+        }
+
+        function createDoubleFromValue( value ){
+          var item = _.extend( {}, context.dataByColumnName );
+          item[ splitCondition.input ] = value;
+          return item;
+        }
+      }
+
+      function createEntity( entityContainer, cb ) {
+        var keys = Object.keys( entityContainer ),
+            entityName = keys[0],
+            entityDefinition = entityContainer[entityName];
+
         // set on context for use by transformer
         context.entityName = entityName;
         context.entityType = entityDefinition.bb_entityType || entityName;
@@ -143,29 +175,31 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
         function validateEntity( transformedEntity, cb ) {
           //schema for the given entity
-          var schema = context.schema[ context.entityType ];
+          var schema = context.schema[ context.entityType ],
+              validationResult;
 
           if(!schema) return cb( new Error( 'schema not found for ' + entityName ) );
 
-          //validate according to schema
-          var validateResult = validate( transformedEntity, schema );
+          if( !context.markNextAsInvalid ) {
+            //validate according to schema
+            validationResult = validate( transformedEntity, schema );
 
-          transformedEntity.isValid = validateResult.valid;
-          
-          if(!transformedEntity.isValid) transformedEntity.validationErrors = validateResult.errors;
+            transformedEntity.isValid = validationResult.valid;
+            
+            if(!transformedEntity.isValid) transformedEntity.validationErrors = validationResult.errors;
+          } else {
+            // transformers can indicate something is not dependable and the entity will need to be checked by the user
+            transformedEntity.isValid = false;
+            delete context.markNextAsInvalid;
+          }
 
           transformedEntity.schema = schema;
           transformedEntity.mapping = entityDefinition;
-          transformedEntity.optional = entityDefinition.optional;
+          
+          if( entityDefinition.optional ) transformedEntity.optional = true;
           transformedEntity.entityType = context.entityType;
 
           cb( null, transformedEntity );
-        }
-
-        function createDoubleFromValue( value ){
-          var item = _.extend( {}, context.dataByColumnName );
-          item[ splitCondition.input ] = value;
-          return item;
         }
       }
 
@@ -241,6 +275,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
           delete entity.mapping;
           delete entity.validationErrors;
           delete entity.entityType;
+          delete entity.optional;
 
           return entity;
         }

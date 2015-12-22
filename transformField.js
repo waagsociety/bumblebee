@@ -11,6 +11,7 @@ function transformField( fieldName, field, context, cb ) {
 
   // set on context for use by transformer
   context.fieldName = fieldName;
+  context.currentInput = field.input;
 
   if( columns && columns.length ) {
     //collect the input value(s)
@@ -35,6 +36,7 @@ function transformField( fieldName, field, context, cb ) {
   }
 
   function applyTransformation(transformerName, cb){
+    // todo implement context.isFulfilled so transformers can indicate that their output is final and no further transformers need to be called. or a similar method.
     if( errorFound || data instanceof Error ) {
       errorFound = true;
       return setImmediate( cb );
