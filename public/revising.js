@@ -194,7 +194,7 @@ function setSummary(){
   summary.innerHTML = 'and ' + revisionsBuffer.length + ' more';
 }
 
-var revisingEntities = {};
+var revisingEntities;
 
 function Revision(data){
   var element = this.element = document.createElement( 'tr' ),
@@ -208,6 +208,8 @@ function Revision(data){
       resultItems = document.createElement( 'ul' ),
       rejectAllButton = document.createElement( 'button' ),
       approveAllButton = document.querySelector( 'button.approve-all' );
+
+  revisingEntities = {};
 
   // var errorContainer = document.createElement( 'div' ),
   //     errorTitle = document.createElement( 'h4' );
