@@ -177,7 +177,7 @@ function Bucket(key){
 				bucket.requestEdit(revision.item);
 			}
 		}
-	}
+	};
 }).call(Bucket.prototype);
 
 module.exports.getBucket = getBucket;
