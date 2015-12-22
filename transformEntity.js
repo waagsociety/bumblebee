@@ -23,9 +23,12 @@ function transformEntity( entityName, entity, context, cb ) {
       'bb_description'
     ].indexOf( fieldName ) > -1 ) return cb();
 
-    var field = entity[fieldName] || container[fieldName];
-    if(!field.bb_subProperty) return transformField( fieldName, field, context, cb );
-    else return async.map( Object.keys( field ), _.partial( transformEntityField, _, _, field, fieldName ), subPropertiesCollectedCb );
+    var field = entity[fieldName] || container && container[fieldName];
+
+    if( field ){
+      if( !field.bb_subProperty ) return transformField( fieldName, field, context, cb );
+      else return async.map( Object.keys( field ), _.partial( transformEntityField, _, _, field, fieldName ), subPropertiesCollectedCb );
+    } else return cb();
 
     function subPropertiesCollectedCb(err, results){ //weird.. gets called with [err, [err, results...]]. so send this way
       results.shift(); //get rid of err on results;
