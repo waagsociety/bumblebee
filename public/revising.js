@@ -367,6 +367,7 @@ function Revision(data){
         if( !selected ) {
           var defaultOption = document.createElement( 'option' );
           defaultOption.value = '';
+          defaultOption.disabled = true;
           defaultOption.label = 'please select';
           defaultOption.setAttribute( 'selected', true );
 
