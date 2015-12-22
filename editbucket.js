@@ -140,6 +140,12 @@ function Bucket(key){
 			subscriber.send( data );
 		});
 	};
+	this.onForceComplete = function( fun ) {
+		this.forceCompleteCb = fun;
+	};
+	this.forceComplete = function(){
+		this.forceCompleteCb();
+	};
 	this.onCustomMessageIn = function( type, fun ){
 		this.customMessageInHandlers[ type ] = fun;
 	};

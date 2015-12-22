@@ -36,10 +36,13 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
         targetItemsTotal: 0,
         targetItemsAutoProcessed: 0,
         targetItemsReceived: 0
-      }, bucket.statusUpdate.bind( bucket ), 500 );
+      }, bucket.statusUpdate.bind( bucket ), 500 ),
+      forcedComplete;
 
   // enables received revisions to be processed
   bucket.onReceiveEdit( receiveEdit );
+
+  bucket.onForceComplete( forceComplete );
 
   return async.waterfall([
     _.partial( async.each, Object.keys( filesToRead), readFile ),
@@ -325,7 +328,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
     if( !stackRunner.length && !Object.keys( entitiesWithRevisionPending ).length ) return cb();
     
     collectedRevisionsCb = function( err ) {
-      if( !Object.keys( entitiesWithRevisionPending ).length && !stackRunner.length ) {
+      if( forcedComplete || !Object.keys( entitiesWithRevisionPending ).length && !stackRunner.length ) {
         cb( err );
       }
     };
@@ -403,6 +406,11 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
     function getEntity( entityName ){
       return entities[entityName];
     }
+  }
+
+  function forceComplete(){
+    forcedComplete = true;
+    collectedRevisionsCb();
   }
 
   function reEvaluateEntitiesWithRevisionPending(){

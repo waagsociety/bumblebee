@@ -173,7 +173,6 @@ function createRevisionJob(data){
     // validate because maybe they are valid already (caused by markNextAsInvalid)
     Object.keys( revisingEntities ).forEach( function( key ) {
       var entity = revisingEntities[ key ];
-      console.log( entity );
       validateItem( entity.currentValues, entity.schema, null, document.querySelector( '[data-key="' + key + '"]' ) );
     } );
 
@@ -482,6 +481,10 @@ function sendRevisions(revisionElement, method){
   function addResult( entity ) {
     results[entity.key] = entity.currentValues;
   }
+}
+
+function forceComplete(){
+  socket.emit( 'force-complete', { socketKey: socketKey } );
 }
 
 function removeRevision(revisionId){
