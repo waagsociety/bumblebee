@@ -348,17 +348,30 @@ function Revision(data){
       if(schemaProperty && schemaProperty['enum'] ){
         input = document.createElement('select');
 
-        var enums = schemaProperty['enum'];
+        var enums = schemaProperty['enum'],
+            selected;
 
         enums.forEach( function createOption( optionValue ) {
           var option = document.createElement('option');
           option.value = optionValue;
           option.label = optionValue;
 
-          if( optionValue === value ) option.setAttribute( 'selected', true );
+          if( optionValue === value ) {
+            option.setAttribute( 'selected', true );
+            selected = true;
+          }
 
           input.appendChild(option);
         } );
+
+        if( !selected ) {
+          var defaultOption = document.createElement( 'option' );
+          defaultOption.value = '';
+          defaultOption.label = 'please select';
+          defaultOption.setAttribute( 'selected', true );
+
+          input.insertBefore( defaultOption, input.firstChild );
+        }
 
         if(enums.length === 1){
           input.disabled = 'disabled';
