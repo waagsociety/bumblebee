@@ -417,3 +417,7 @@ header .emphasis{
 #numerical-sourceitemswaiting {
 	color: #FFE108;
 }
+
+button#force-complete {
+	float: right;
+}

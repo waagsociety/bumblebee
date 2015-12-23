@@ -11,7 +11,8 @@ var revisionHandlers = { '#pending-revisions': { DOMNodeInserted: requestAdded }
       'select.modify': { change: handleModifyKeyUp },
       '.resultItem.valid, .resultItem.approved': { click: toggleResultStatus },
       '.reject-all': { click: rejectAll },
-      '.approve-all': { click: approveAll }
+      '.approve-all': { click: approveAll },
+      '#force-complete': { click: handleForceCompleteClick }
     },
     socketHandlers = {
       'requestedit': createRevisionJob,
@@ -123,6 +124,13 @@ function handleModifyDateChange(e){
   resolveOnObject(entity.currentValues, this.dataset.path, isoString );
 
   validateItem( entity.currentValues, entity.schema, this, resultItem );
+}
+
+function handleForceCompleteClick( e ) {
+  if( confirm( text.transform.forceCompleteConfirmation ) ) {
+    forceComplete();
+    this.remove();
+  }
 }
 
 function validateItem( values, schema, input, resultItem ){
@@ -565,6 +573,9 @@ function displayStatus( statusUpdate ) {
 }
 
 function handleComplete(results){
+  var completeBtn = document.getElementById( 'force-complete' );
+  completeBtn && completeBtn.remove();
+
   var summary = document.getElementById('pending-revisions-summary');
   if(results.error) {
     summary.innerHTML = results.error;

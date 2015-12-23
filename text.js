@@ -18,6 +18,8 @@ module.exports = {
 		sourceTitle: 'Data from source file',
 		thereAreErrors: 'Errors occurred, hover here to see them',
 		approve: 'Approve',
-		reject: 'Reject'
+		reject: 'Reject',
+		forceComplete: 'complete now',
+		forceCompleteConfirmation: 'are you sure?\nthis will lose all unrevised entities.\nYou can however always come back.'
 	}
 };
