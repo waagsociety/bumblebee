@@ -234,7 +234,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
         } else {
 
           // first check revised entities store for previously revised entities with same csv data
-          var stored = revisedEntitiesStore.get( stableStringify( entities[ 0 ].sourceData ) );
+          var stored = revisedEntitiesStore.get( stableStringify( context.dataByColumnName ) );
 
           if( stored === 'rejected' ) {
             status.sourceItemsAutoProcessed++;
