@@ -2,6 +2,7 @@ var _ = require( 'underscore' ),
     fs = require('fs'),
     async = require( 'async' ),
     aStackRunner = require('astackrunner'),
+    crypto = require('crypto'),
     dumbstore = require('dumbstore'),
     YAML = require( 'js-yaml' ),
     stableStringify = require('json-stable-stringify'),
@@ -234,7 +235,8 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
         } else {
 
           // first check revised entities store for previously revised entities with same csv data
-          var stored = revisedEntitiesStore.get( stableStringify( context.dataByColumnName ) );
+          var hash = stableHash( context.dataByColumnName ),
+              stored = revisedEntitiesStore.get( hash );
 
           if( stored === 'rejected' ) {
             status.sourceItemsAutoProcessed++;
@@ -352,14 +354,13 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
         }, _.partial( receiveEdit, editType, data, cb, true ) );
     }
 
-    var sourceDataString = stableStringify( sourceData );
-
+    var hashed = stableHash( sourceData );
 
     if( editType === 'dismiss' ) {
       status.sourceItemsReceived++;
       status.sourceItemsWaiting--;
       
-      revisedEntitiesStore.add( sourceDataString, 'rejected' );
+      revisedEntitiesStore.add( hashed, 'rejected' );
       delete entitiesWithRevisionPending[data.revisionId];
     
     } else {
@@ -375,7 +376,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
       status.targetItemsReceived += entityKeys.length;
 
       Array.prototype.push.apply( allEntities, entityKeys.map( getEntity ) );
-      revisedEntitiesStore.add( sourceDataString, JSON.stringify( Object.keys( entities ).map( function( key ){ return entities[ key ]; } ) ) );
+      revisedEntitiesStore.add( hashed, JSON.stringify( Object.keys( entities ).map( function( key ){ return entities[ key ]; } ) ) );
       
       delete entitiesWithRevisionPending[data.revisionId];
 
@@ -439,6 +440,10 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
 function setReceiveHandlers( handlers ){
   receiveHandlers = handlers;
+}
+
+function stableHash( object ) {
+  return crypto.createHash( 'md5' ).update( stableStringify( object ) ).digest( 'hex' );
 }
 
 module.exports = {
