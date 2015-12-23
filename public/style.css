@@ -402,6 +402,10 @@ header .emphasis{
 	background-color: #FFE108;
 }
 
+#numerical-status-container {
+	pointer-events: none;
+}
+
 #numerical-status-container span {
 	margin: 5px;
 }
