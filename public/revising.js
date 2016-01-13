@@ -24,24 +24,29 @@ var revisionHandlers = { '#pending-revisions': { DOMNodeInserted: requestAdded }
     };
 
 // copy revisionHandlers over to eventHandlers
-Object.keys( revisionHandlers ).forEach( function( selector ){
-  eventHandlers[selector] = revisionHandlers[selector];
+revisionHandlers.forEach( function( selector, handlers ){
+  eventHandlers[ selector ] = handlers;
 } );
 
+/**
+ * Enables socket.io connection and binds socket handlers
+ */
 function initConnection(){
   if( !window.io ) return;
 
   socket = io();
 
-  var keyContainer = document.getElementById('socketkey');
+  var keyContainer = document.getElementById( 'socketkey' );
   
   socketKey = keyContainer && keyContainer.dataset.socketkey;
   
+  // couples the socket connection with a bucket on the server, owned by a specific transformation process
   socket.emit('socketkey', socketKey);
 
   // bind socket handlers
   socketHandlers.forEach( socket.on.bind( socket ) );
 
+  // declares sendCustomMessage for use by consumers
   window.sendCustomMessage = function( type, data ){
     var transportObject = { socketKey: socketKey, type: type };
     if( data !== undefined ) transportObject.data = data;
@@ -50,27 +55,43 @@ function initConnection(){
 }
 
 var customMessageHandlers = {};
-
+/**
+ * when a custom message comes in, it checks the customMessageHandlers object for the message.type,
+ * if it exists calls it with message.data
+ */
 function customMessageHandler(message){
   if(message.type in customMessageHandlers) customMessageHandlers[message.type](message.data);
   else console.log(message);
 }
 
+/**
+ * used for dynamically injecting scripts from consumer side
+ * to do so, from postprocessor: `bucket.loadScript( '/relations.js' );` will try to get relations.js from consumer public folder
+ */
 function loadScript(path){
   var script = document.createElement( 'script' );
   script.src = path;
   document.head.appendChild(script);
 }
 
+/**
+ * Changes color of result item
+ */
 function toggleResultStatus(e){
   this.classList.toggle('valid');
   this.classList.toggle('approved');
 }
 
+/**
+ * dismisses all entities from this csv row
+ */
 function rejectAll(e){
   sendRevisions( document.querySelector('[data-revision-id]'), 'dismiss' );
 }
 
+/**
+ * if entities are valid posts them to the server
+ */
 function approveAll(e){
   var invalidItems = document.querySelectorAll( '.resultItem.invalid' );
 
@@ -79,6 +100,13 @@ function approveAll(e){
   }
 }
 
+/**
+ * Handles key presses in form fields,
+ * responsible for sending with enter,
+ * rejecting with escape key
+ * syncing the result entities with the form elements
+ * validating the entities
+ */
 function handleModifyKeyUp(e){
   if(this.type && this.type === 'date') return;
 
@@ -111,6 +139,9 @@ function handleModifyKeyUp(e){
   validateItem( entity.currentValues, entity.schema, this, resultItem );
 }
 
+/**
+ * Same as previous but for date fields
+ */
 function handleModifyDateChange(e){
   var modifyItem = this.bbQuerySelectorParent( '.modifiableItem' ),
       entity = revisingEntities[modifyItem.dataset.key],
@@ -126,6 +157,10 @@ function handleModifyDateChange(e){
   validateItem( entity.currentValues, entity.schema, this, resultItem );
 }
 
+/**
+ * Sends signal to server to continue with all currently processed entities,
+ * leaving the ones to be processed behind
+ */
 function handleForceCompleteClick( e ) {
   if( confirm( text.transform.forceCompleteConfirmation ) ) {
     forceComplete();
@@ -133,8 +168,12 @@ function handleForceCompleteClick( e ) {
   }
 }
 
-function validateItem( values, schema, input, resultItem ){
-  if( validator.validate( values, schema ) ) {
+/**
+ * validates item and changes color of entity to show this status,
+ * also sets red border on input if it's invalid
+ */
+function validateItem( item, schema, input, resultItem ){
+  if( validator.validate( item, schema ) ) {
     resultItem.classList.add('valid');
     resultItem.classList.remove('invalid');
   } else {
@@ -157,6 +196,9 @@ function validateItem( values, schema, input, resultItem ){
   updateApproveAllButton();
 }
 
+/**
+ * enables or disables approve all button based on the presence of invalid entities
+ */
 function updateApproveAllButton(){
   var invalidItems = document.querySelectorAll( '.resultItem.invalid' ),
       approveAllButton = document.querySelector( 'button.approve-all' );
@@ -165,45 +207,43 @@ function updateApproveAllButton(){
   else approveAllButton.setAttribute( 'disabled', true );
 }
 
-function requestAdded(e){
+/**
+ * triggers when new revisions are added to the DOM, focuses on first empty input
+ */
+function requestAdded( e ){
   var firstEmptyElement;
-  e.target.querySelectorAll && Array.prototype.forEach.call(e.target.querySelectorAll('input'), checkIfIsFirstEmptyInput);
+  if( e.target.querySelectorAll ) Array.prototype.forEach.call( e.target.querySelectorAll( 'input' ), checkIfIsFirstEmptyInput );
 
-  function checkIfIsFirstEmptyInput(element){
+  function checkIfIsFirstEmptyInput( element ){
     if( !firstEmptyElement && !element.value ) firstEmptyElement = element;
   }
 
-  if(firstEmptyElement) firstEmptyElement.focus();
+  if( firstEmptyElement ) firstEmptyElement.focus();
 }
 
+/**
+ * creates on-screen elements and data containers for a revision job
+ * enables/disables approve button depending on entities' validity
+ */
 function createRevisionJob(data){
-  var tbody = document.querySelector('#pending-revisions tbody');
+  var tbody = document.querySelector('#pending-revisions tbody'),
+      revision = new Revision(data);
 
-  if(tbody.children.length < maxRevisionsToShow) {
-    var revision = new Revision(data);
-    tbody.appendChild(revision.element);
+  tbody.appendChild(revision.element);
 
-    // validate because maybe they are valid already (caused by markNextAsInvalid)
-    Object.keys( revisingEntities ).forEach( function( key ) {
-      var entity = revisingEntities[ key ];
-      validateItem( entity.currentValues, entity.schema, null, document.querySelector( '[data-key="' + key + '"]' ) );
-    } );
+  // validate because maybe they are valid already (caused by markNextAsInvalid)
+  revisingEntities.forEach( function( key, entity ) {
+    validateItem( entity.currentValues, entity.schema, null, document.querySelector( '[data-key="' + key + '"]' ) );
+  } );
 
-    updateApproveAllButton();
-  } else { //does not happen anymore
-    revisionsBuffer.push(data);
-    setSummary();
-  }
-}
-
-function setSummary(){
-  var summary = document.getElementById('pending-revisions-summary');
-
-  summary.innerHTML = 'and ' + revisionsBuffer.length + ' more';
+  updateApproveAllButton();
 }
 
 var revisingEntities;
 
+/**
+ * creates screen element for revisions
+ */
 function Revision(data){
   var element = this.element = document.createElement( 'tr' ),
       sourceTableCell = document.createElement( 'td' ),
@@ -239,7 +279,7 @@ function Revision(data){
 
   element.dataset.revisionId = data.revisionId;
   
-  Object.keys( data.sourceData ).forEach( createSourceRow );
+  data.sourceData.forEach( createSourceRow );
 
   data.entities.forEach( createModifyFieldsAndResultForEntity );
 
@@ -254,9 +294,8 @@ function Revision(data){
 
   return;
 
-  function createSourceRow( key ){
-    var value = data.sourceData[key],
-        tr = document.createElement('tr'),
+  function createSourceRow( key, value ){
+    var tr = document.createElement('tr'),
         td1 = document.createElement('td'),
         td2 = document.createElement('td');
 
@@ -471,7 +510,7 @@ function Revision(data){
     }
 
     function addValidationError( error ){
-      addError( error.property.slice(9), error.message );
+      addError( error.property.slice( 9 ), error.message );
     }
 
     function addError( key, message ){
@@ -490,6 +529,9 @@ function Revision(data){
   }
 }
 
+/**
+ * Sends revisions to the server
+ */
 function sendRevisions(revisionElement, method){
   var revisionId = revisionElement.dataset.revisionId,
       revisionSet = revisionItems[revisionId];
@@ -513,10 +555,17 @@ function sendRevisions(revisionElement, method){
   }
 }
 
+/**
+ * Sends signal to server to continue to postprocessing,
+ * leaving all to be revised entities behind
+ */
 function forceComplete(){
   socket.emit( 'force-complete', { socketKey: socketKey } );
 }
 
+/**
+ * removes revision element from DOM
+ */
 function removeRevision(revisionId){
 
   var element = document.querySelector('tr[data-revision-id="' + revisionId + '"]'),
@@ -536,19 +585,20 @@ function removeRevision(revisionId){
   var nextRevision = new Revision(nextRevisionData);
 
   tbody.appendChild(nextRevision.element);
-
-  setSummary();
 }
 
 var progress = {};
 
+/**
+ * shows csv rows autodone, manualdone and to do
+ */
 function displayStatus( statusUpdate ) {
   var revisionsTable;
 
   //console.log('status:', statusUpdate);
   Object.keys( statusUpdate ).forEach( setOnStatus );
 
-  ['sourceItemsAutoProcessed', 'sourceItemsReceived', 'sourceItemsWaiting'].forEach( setWidth );
+  [ 'sourceItemsAutoProcessed', 'sourceItemsReceived', 'sourceItemsWaiting' ].forEach( setWidth );
 
   if( progress.sourceItemsTotal === progress.sourceItemsReceived + progress.sourceItemsAutoProcessed ){
     revisionsTable = document.querySelector('#pending-revisions table');
@@ -572,37 +622,40 @@ function displayStatus( statusUpdate ) {
   }
 }
 
+/**
+ * removes complete buttons, shows download links
+ */
 function handleComplete(results){
   var completeBtn = document.getElementById( 'force-complete' );
-  completeBtn && completeBtn.remove();
+  if( completeBtn ) completeBtn.remove();
 
-  var summary = document.getElementById('pending-revisions-summary');
-  if(results.error) {
+  var summary = document.getElementById( 'pending-revisions-summary' );
+  if( results.error ) {
     summary.innerHTML = results.error;
     return;
   }
   
   var hrefs = results.files.map( createFileLinks ),
-      lis = hrefs.map(embedInLi);
+      lis = hrefs.map( embedInLi );
 
-  var pendingRevisions = document.querySelector('#pending-revisions');
+  var pendingRevisions = document.querySelector( '#pending-revisions' );
 
   pendingRevisions.innerHTML = '';
-  document.querySelector('header.transformation-header h1').innerHTML = 'Transformation complete!';
+  document.querySelector( 'header.transformation-header h1' ).innerHTML = 'Transformation complete!';
 
-  var ul = document.createElement('ul');
-  lis.forEach( ul.appendChild.bind(ul) );
+  var ul = document.createElement( 'ul' );
+  lis.forEach( ul.appendChild.bind( ul ) );
   
-  pendingRevisions.appendChild(ul);
+  pendingRevisions.appendChild( ul );
 
   return;
 
-  function createFileLinks(file){
-    var span = document.createElement('span'),
-        aDownload = document.createElement('a'),
-        aView = document.createElement('a'),
-        filename = file.split('/').pop(),
-        extension = filename.split('.').pop();
+  function createFileLinks( file ){
+    var span = document.createElement( 'span' ),
+        aDownload = document.createElement( 'a' ),
+        aView = document.createElement( 'a' ),
+        filename = file.split( '/' ).pop(),
+        extension = filename.split( '.' ).pop();
 
     span.innerHTML = filename;
 
@@ -616,15 +669,15 @@ function handleComplete(results){
       aView.href += '?raw=true';
     }
 
-    span.appendChild(aDownload);
-    span.appendChild(aView);
+    span.appendChild( aDownload );
+    span.appendChild( aView );
     return span;
   }
 
-  function embedInLi(element){
-    var li = document.createElement('li');
+  function embedInLi( element ){
+    var li = document.createElement( 'li' );
     li.className = 'transformation-result';
-    li.appendChild(element);
+    li.appendChild( element );
     return li;
   }
 }
