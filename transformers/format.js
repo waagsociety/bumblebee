@@ -8,8 +8,7 @@ module.exports.transform = function( context, data, argument ){
 	
 	while( matches = tagRegExpg.exec( string ) ){
 		key = matches[ 1 ];
-		value = key.length ? data[ key ] : data;
-		if( !value ) return new Error('format: key ' + key + ' not found in data');
+		value = key.length ? data[ key ] || '' : data;
 		string = string.replace( matches[ 0 ], value );
 	}
 
