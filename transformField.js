@@ -42,7 +42,8 @@ function transformField( fieldName, field, context, cb ) {
       return setImmediate( cb );
     }
 
-    var transformerArguments = [context, data];
+    var transformerArguments = [context, data],
+        transformerTimedOut = false;
 
     if( transformerName.indexOf( '(' ) > -1 ) {
       var result = /\((.+)\)/.exec( transformerName ),
@@ -62,17 +63,27 @@ function transformField( fieldName, field, context, cb ) {
     if( !transformer ) throw( 'transformer ' + transformerName + ' not found' );
     
     data = transformer.apply( null, transformerArguments );
-    
+    console.log( transformerName, data );
+
     // synchronous transformers return data and don't call cb
     if( data || data !== undefined ) {
-      setImmediate( cb );
+      return setImmediate( cb );
     }
 
+    // set a 20 second timeout duration for transformer
+    setTimeout( transformerTimedOutHandler, 20 * 1000 );
+
     function transformerCb(err, passedData){
+      if( transformerTimedOut ) return;
       if( err ) return cb( err );
 
       data = passedData;
 
+      cb();
+    }
+
+    function transformerTimedOutHandler() {
+      transformerTimedOut = true;
       cb();
     }
   }
