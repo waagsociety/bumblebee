@@ -462,9 +462,14 @@ function Revision(data){
       modifyTable.appendChild( modifyTr );
       resultTable.appendChild( resultTr );
 
-      var isRequired = ~schema.required.indexOf( key ),
+      var isRequired = schema.required && ~schema.required.indexOf( key ),
           isHidden = schema.hidden && ~schema.hidden.indexOf( key ),
           isFixed = schema.fixed && ~schema.fixed.indexOf( key );
+
+      // check schema oneOf required clauses
+      if( !isRequired && schema.oneOff ) {
+        schema.oneOff.forEach( setIsRequired );
+      }
 
       if( isRequired && !isFixed ){
         label.innerHTML += '*';
@@ -503,6 +508,10 @@ function Revision(data){
       input.classList.add( 'modify' );
       input.dataset.path = propertyPath;
       resultValueTd.dataset.path = propertyPath;
+    }
+
+    function setIsRequired( valueHolder ) {
+      isRequired = isRequired || ~valueHolder.required.indexOf( key );
     }
 
     function addTransformationError( key ){
