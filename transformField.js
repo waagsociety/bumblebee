@@ -63,7 +63,7 @@ function transformField( fieldName, field, context, cb ) {
     if( !transformer ) throw( 'transformer ' + transformerName + ' not found' );
     
     data = transformer.apply( null, transformerArguments );
-    console.log( transformerName, data );
+    // console.log( transformerName, data );
 
     // synchronous transformers return data and don't call cb
     if( data || data !== undefined ) {

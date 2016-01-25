@@ -6,7 +6,7 @@ var _ = require( 'underscore' ),
     dumbstore = require('dumbstore'),
     YAML = require( 'js-yaml' ),
     stableStringify = require('json-stable-stringify'),
-    csvParser = require('./csv_parse'),
+    csvParser = require( 'csvparse2objects' ),
     validate = require( 'jsonschema' ).validate,
     uuid = require('node-uuid'),
     magicStatus = require('magic-status'),
@@ -91,6 +91,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
     return cb();
 
     function extractEntitiesFromObject( object, cb ) {
+      if( forcedComplete ) return;
       context.dataByColumnName = object;
       context.currentEntities = {};
 
@@ -136,7 +137,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
           inputValue = context.dataByColumnName[ skipCondition.input ];
 
           valueMatches = skipCondition.value && ( typeof skipCondition.value === 'object' ? skipCondition.value.indexOf( inputValue ) > -1 : skipCondition.value === inputValue );
-          regexMatches = skipCondition.regex && new RegExp( skipCondition.regex ).exec( inputValue );
+          regexMatches = skipCondition.regex && new RegExp( skipCondition.regex, 'i' ).exec( inputValue );
 
           if( valueMatches || regexMatches ) {
             status.sourceItemsAutoProcessed++;
@@ -208,6 +209,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
       }
 
       function entitiesCreated( err, entities ) {
+
         if( err ){
           if( err.message === 'skipCondition' ){
             status.sourceItemsAutoProcessed++;
@@ -228,7 +230,7 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
         if(!invalidFound){
           allEntities.push.apply( allEntities, entities.map( stripExtraProps ) );
-          
+
           status.sourceItemsAutoProcessed++;
           status.targetItemsAutoProcessed += entities.length;
           status.targetItemsTotal = allEntities.length;
@@ -411,7 +413,34 @@ function transformFile( path_schema, path_mapping, path_data, bucket, done ) {
 
   function forceComplete(){
     forcedComplete = true;
+
+    storePendingItems();
+
     collectedRevisionsCb();
+  }
+
+  function storePendingItems() {
+    var header = Object.keys( entitiesWithRevisionPending[ Object.keys( entitiesWithRevisionPending )[ 0 ] ].sourceData ),
+        entitiesToStore = [],
+        filename;
+
+    Object.keys( entitiesWithRevisionPending ).forEach( extractSourceData );
+
+    filename = path_data + '-unprocessed.csv';
+
+    return fs.writeFile( filename, entitiesToStore.join( '\n' ), 'utf8' );
+
+    function extractSourceData( key ) {
+      var item = entitiesWithRevisionPending[ key ],
+          list = [];
+      
+      header.forEach( extractValue );
+      entitiesToStore.push( list.join( ',' ) );
+
+      function extractValue( key ) {
+        list.push( item.sourceData[ key ] );
+      }
+    }
   }
 
   function reEvaluateEntitiesWithRevisionPending(){
